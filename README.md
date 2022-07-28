@@ -7,4 +7,8 @@
 6)"Yarn install"
 7) Installi Pm2
 8)"sudo npm install -g pm2"
-9)
+9)"pm2 start server.js"
+10)kontrolli kas funkab "pm2 ls"
+10)"pm2 startup"
+11) kopeeri rida ja pane terminali
+Nüüd peaks kõik jooksma nagu kulda :-)
