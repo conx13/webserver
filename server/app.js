@@ -44,6 +44,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // et /docs saame kätte 'pildid' kausta
 app.use('/api/pics', express.static(path.join(__dirname, 'public/pildid/userPics')));
 app.use('/docs', express.static(path.join(__dirname, 'lepingdata')));
+//Ajutiselt kasutame basicAuth funktsiooni
 app.use(basicAuth({
   users: {
       'test': '123£',
