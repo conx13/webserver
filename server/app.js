@@ -47,9 +47,7 @@ app.use('/docs', express.static(path.join(__dirname, 'lepingdata')));
 //Ajutiselt kasutame basicAuth funktsiooni
 app.use(basicAuth({
   users: {
-      'test': '123£',
-      'adam': 'password1234',
-      'eve': 'asdfghjkl',
+      'matek': '123£-UYh4-8UXx',
   }
 }))
 
