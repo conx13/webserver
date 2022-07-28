@@ -52,7 +52,7 @@ const tanaPoleToolList = (req, res, next) => {
 
 const tanaAktGrupp = (req, res, next) => {
     req.params.ggrupp;
-    knex('wLyhikeTanaTool_kogus').where('GGRUPP', req.params.ggrupp).orderBy('TOO','START', 'ENIMI')
+    knex('wLyhikeTanaTool_kogus').where('GGRUPP', req.params.ggrupp).orderBy([{ column: 'TOO' }, { column: 'PNIMI' }, { column: 'START' }])
         .then((rows) => {
             res.status(200).json(rows);
         })
