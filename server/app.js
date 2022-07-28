@@ -6,7 +6,8 @@ const morgan = require('morgan');
 const path = require('path');
 const bParser = require('body-parser');
 const session = require('express-session');
-const {v4:uuidv4} = require('uuid');
+const { v4: uuidv4 } = require('uuid');
+const basicAuth = require('express-basic-auth')
 
 // const history = require('connect-history-api-fallback');
 const passport = require('./config/passport');
@@ -39,9 +40,18 @@ app.use(morgan('dev'));
 app.use(bParser.json());
 app.use(bParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+
 // et /docs saame kätte 'pildid' kausta
 app.use('/api/pics', express.static(path.join(__dirname, 'public/pildid/userPics')));
 app.use('/docs', express.static(path.join(__dirname, 'lepingdata')));
+app.use(basicAuth({
+  users: {
+      'test': '123£',
+      'adam': 'password1234',
+      'eve': 'asdfghjkl',
+  }
+}))
+
 app.use(session({
   genid: () => {
     console.log('Kasutaja ei ole sisse loginud!');
