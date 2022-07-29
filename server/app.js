@@ -36,7 +36,8 @@ app.set('port', port);
 *Middleware
 */
 
-app.use(morgan('dev'));
+app.use(morgan('[:date[clf]] :method :url :status :response-time ms - :res[content-length]'));
+//app.use(morgan('dev'));
 app.use(bParser.json());
 app.use(bParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
