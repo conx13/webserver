@@ -277,7 +277,7 @@ const delPilt = async (req, res, next) => {
   const otsiPilt = req.params.pilt;
 
   const delDbPilt = async () => {
-    await knex('users')
+    await knex('tootajad')
       .where('pilt', otsiPilt)
       .update('pilt', null)
       .catch((err) => {
