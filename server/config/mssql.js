@@ -1,5 +1,6 @@
 module.exports = require('knex')({
-    client: 'mssql',
+  client: 'mssql',
+  debug: true,
     connection: {
         user: 'Hillar',
         password: 'conx13',
