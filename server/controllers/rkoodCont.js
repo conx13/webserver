@@ -53,16 +53,6 @@ const tanaPoleToolList = (req, res, next) => {
 /* -------------------------------------------------------------------------- */
 
 const tanaAktGrupp = (req, res, next) => {
-<<<<<<< HEAD
-    req.params.ggrupp;
-    knex('wLyhikeTanaTool_kogus').where('GGRUPP', req.params.ggrupp).orderBy([{ column: 'TOO' }, { column: 'PNIMI' }, { column: 'START' }])
-        .then((rows) => {
-            res.status(200).json(rows);
-        })
-        .catch(err => next(err));
-}
-
-=======
   req.params.ggrupp;
   knex("wLyhikeTanaTool_kogus")
     .where("GGRUPP", req.params.ggrupp)
@@ -72,7 +62,6 @@ const tanaAktGrupp = (req, res, next) => {
     })
     .catch((err) => next(err));
 };
->>>>>>> 46248cb4e12babb92ef80d11bab89b4d14137dc1
 
 /* -------------------------------------------------------------------------- */
 /*                                 Töötaja TID                                */
