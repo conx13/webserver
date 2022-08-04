@@ -98,8 +98,17 @@ const otsiTood = (req, res, next) => {
   console.log(req.params);
   knex("w_rk_otsi_tood")
     .whereLike("LEPNR", req.params.lepnr)
+    .modify(function (queryBuilder) {
+      if (req.params.elem=='true') {
+        queryBuilder.andWhere("GGRUPP", "Elemendiliin");
+      }
+    })
     .andWhereLike("TOO", req.params.too)
-    .orderBy([{ column: "ontoos", order:'desc' }, { column: "gnimi" }, { column: "too" }])
+    .orderBy([
+      { column: "ontoos", order: "desc" },
+      { column: "gnimi" },
+      { column: "too" },
+    ])
     .then((rows) => {
       res.status(200).json(rows);
     })
