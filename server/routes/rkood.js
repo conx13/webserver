@@ -46,7 +46,7 @@ router.get("/tanagrupp/:ggrupp", (req, res, next) =>
 /* -------------------------------------------------------------------------- */
 /*                                  Otsi tööd                                 */
 /* -------------------------------------------------------------------------- */
-router.get("/otsiKoodi/leping/:lepnr/too/:too", (req, res, next) =>
+router.get("/otsiKoodi/leping/:lepnr/too/:too/elemendid/:elem", (req, res, next) =>
   rkoodCont.otsiTood(req, res, next)
 );
 
