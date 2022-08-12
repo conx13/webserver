@@ -116,6 +116,21 @@ const otsiTood = (req, res, next) => {
 };
 
 /* -------------------------------------------------------------------------- */
+/*                                  Kes tegi                                  */
+/* -------------------------------------------------------------------------- */
+
+const kesTegi = (req, res, next) => {
+  knex("w_rk_kes_tegi")
+    .where("jid", req.params.jid)
+    .orderBy([{ column: "PNIMI" }, { column: "start" }])
+    .then((rows) => {
+      res.status(200).json(rows);
+    })
+    .catch((err) => next(err));
+};
+
+
+/* -------------------------------------------------------------------------- */
 module.exports = {
   tanaTool,
   tanaToolList,
@@ -125,4 +140,5 @@ module.exports = {
   tootaja,
   tootajagrupp,
   otsiTood,
+  kesTegi
 };
