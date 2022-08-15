@@ -137,7 +137,7 @@ const elemInfo = (req, res, next) => {
   knex('w_rk_elem_info')
     .where('jid', req.params.jid)
     .then((rows) => {
-      res.status(200).json(rows);
+      res.status(200).json(rows).first;
     })
     .catch((err) => next(err));
 }
