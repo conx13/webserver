@@ -70,6 +70,12 @@ router.get("/tootajagrupid", (req, res, next) =>
 router.get("/kestegi/:jid", (req, res, next) =>
   rkoodCont.kesTegi(req, res, next)
 );
+/* -------------------------------------------------------------------------- */
+/*                                Elemendi info                               */
+/* -------------------------------------------------------------------------- */
+router.get("/eleminfo/:jid", (req, res, next) =>
+  rkoodCont.elemInfo(req, res, next)
+);
 
 /* -------------------------------------------------------------------------- */
 module.exports = router;

@@ -129,6 +129,18 @@ const kesTegi = (req, res, next) => {
     .catch((err) => next(err));
 };
 
+/* -------------------------------------------------------------------------- */
+/*                                Elemendi info                               */
+/* -------------------------------------------------------------------------- */
+
+const elemInfo = (req, res, next) => {
+  knex('w_rk_elem_info')
+    .where('jid', req.params.jid)
+    .then((rows) => {
+      res.status(200).json(rows);
+    })
+    .catch((err) => next(err));
+}
 
 /* -------------------------------------------------------------------------- */
 module.exports = {
@@ -140,5 +152,6 @@ module.exports = {
   tootaja,
   tootajagrupp,
   otsiTood,
-  kesTegi
+  kesTegi,
+  elemInfo
 };
