@@ -46,8 +46,9 @@ router.get("/tanagrupp/:ggrupp", (req, res, next) =>
 /* -------------------------------------------------------------------------- */
 /*                                  Otsi tööd                                 */
 /* -------------------------------------------------------------------------- */
-router.get("/otsiKoodi/leping/:lepnr/too/:too/elemendid/:elem", (req, res, next) =>
-  rkoodCont.otsiTood(req, res, next)
+router.get(
+  "/otsiKoodi/leping/:lepnr/too/:too/elemendid/:elem",
+  (req, res, next) => rkoodCont.otsiTood(req, res, next)
 );
 
 /* -------------------------------------------------------------------------- */
@@ -75,6 +76,13 @@ router.get("/kestegi/:jid", (req, res, next) =>
 /* -------------------------------------------------------------------------- */
 router.get("/eleminfo/:jid", (req, res, next) =>
   rkoodCont.elemInfo(req, res, next)
+);
+
+/* -------------------------------------------------------------------------- */
+/*                             Elemendi statistika                            */
+/* -------------------------------------------------------------------------- */
+router.get("/elemstats/:jid", (req, res, next) =>
+  rkoodCont.elemStats(req, res, next)
 );
 
 /* -------------------------------------------------------------------------- */

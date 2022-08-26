@@ -143,6 +143,18 @@ const elemInfo = (req, res, next) => {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                            Elemendi statistikat                            */
+/* -------------------------------------------------------------------------- */
+const elemStats = (req, res, next) => {
+  knex('w_rk_elem_stats')
+    .where('jid', req.params.jid)
+    .then((rows) => {
+      res.status(200).json(rows).first;
+    })
+    .catch((err) => next(err));
+}
+
+/* -------------------------------------------------------------------------- */
 module.exports = {
   tanaTool,
   tanaToolList,
@@ -153,5 +165,6 @@ module.exports = {
   tootajagrupp,
   otsiTood,
   kesTegi,
-  elemInfo
+  elemInfo,
+  elemStats,
 };
