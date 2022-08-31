@@ -122,7 +122,7 @@ const otsiTood = (req, res, next) => {
 const kesTegi = (req, res, next) => {
   knex("w_rk_kes_tegi")
     .where("jid", req.params.jid)
-    .orderBy([{ column: "nimi" }, { column: "start" }])
+    .orderBy([{ column: "nimi" }, { column: "start", order:'desc' }])
     .then((rows) => {
       res.status(200).json(rows);
     })
