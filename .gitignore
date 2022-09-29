@@ -11,3 +11,5 @@ server/data/**
 .Trashes
 ehthumbs.db
 Thumbs.db
+server/package-lock.json
+server/yarn.lock

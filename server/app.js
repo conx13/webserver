@@ -2,6 +2,7 @@
 *Module dependencies
 */
 const express = require('express');
+var cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
 const bParser = require('body-parser');
@@ -38,6 +39,7 @@ app.set('port', port);
 
 app.use(morgan('[:date[clf]] :method :url :status :response-time ms - :res[content-length]'));
 //app.use(morgan('dev'));
+app.use(cors());
 app.use(bParser.json());
 app.use(bParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
