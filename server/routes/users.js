@@ -85,7 +85,7 @@ router.get('/otsifirma/:firma', (req, res, next) => otsiFirmat(req, res, next));
 //   :::::: O T S I N : :  :   :    :     :        :          :
 // ────────────────────────────────────────────────────────────
 //
-router.get('/otsi/:otsi', isLoggedIn, (req, res, next) => otsi(req, res, next));
+router.get('/otsi/:otsi/:akt', (req, res, next) => otsi(req, res, next));
 // ────────────────────────────────────────────────────────────────────────────────
 //
 // ────────────────────────────────────────────────────────────────────── I ──────────

@@ -246,30 +246,26 @@ const otsiFirmat = (req, res, next) => {
 // ──────────────────────────────────────────────────── I ──────────
 //   :::::: O T S I M E : :  :   :    :     :        :          :
 // ──────────────────────────────────────────────────────────────
-//'/otsi/:otsi'
+//'/otsi/:otsi/:akt'
 
 const otsi = (req, res, next) => {
   if (!req.params.otsi) {
     return next(new Error("Otsing puudub!"));
   }
   const otsiText = `%${req.params.otsi}%`;
-  return knex("users")
-    .select(
-      "id",
-      "enimi",
-      "pnimi",
-      "email",
-      "firma",
-      "mob",
-      "roll",
-      "markus",
-      "todate",
-      "pilt"
-    )
+  let akt = "";
+
+  if (!req.params.akt) {
+    akt = "%";
+  } else {
+    akt = req.params.akt;
+  }
+  return knex("w_rk_tootajad")
     .where("enimi", "like", otsiText)
     .orWhere("pnimi", "like", otsiText)
     .orWhere("firma", "like", otsiText)
-    .orWhere("email", "like", otsiText)
+    .orWhere("toogrupp_nimi", "like", otsiText)
+    .andWhere("aktiivne", "like", akt)
     .then((rows) => res.json(rows))
     .catch((err) => next(err));
 };
