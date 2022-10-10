@@ -261,11 +261,15 @@ const otsi = (req, res, next) => {
     akt = req.params.akt;
   }
   return knex("w_rk_tootajad")
-    .where("enimi", "like", otsiText)
-    .orWhere("pnimi", "like", otsiText)
-    .orWhere("firma", "like", otsiText)
-    .orWhere("toogrupp_nimi", "like", otsiText)
-    .andWhere("aktiivne", "like", akt)
+    .where("aktiivne", "like", akt)
+    .where((w) =>
+      w
+        .orWhere("enimi", "like", otsiText)
+        .orWhere("pnimi", "like", otsiText)
+        .orWhere("firma", "like", otsiText)
+        .orWhere("toogrupp_nimi", "like", otsiText)
+        .orWhere("Ajanimi", "like", otsiText)
+    )
     .then((rows) => res.json(rows))
     .catch((err) => next(err));
 };
