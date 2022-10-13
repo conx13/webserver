@@ -5,7 +5,9 @@ const knex = require("../config/mssql");
 /*                               Täna aktiivsed                               */
 /* -------------------------------------------------------------------------- */
 const tanaTool = (req, res, next) => {
+  req.params.asukoht
   knex("wtanatool")
+    .where('asukoht_id', req.params.asukoht)
     .first()
     .then((rows) => {
       res.status(200).json(rows);

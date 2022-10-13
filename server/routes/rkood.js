@@ -13,7 +13,7 @@ router.get("/test", (req, res) => res.status(200).send("rkood TEST"));
 /* -------------------------------------------------------------------------- */
 /*                               Täna tööl kokku                              */
 /* -------------------------------------------------------------------------- */
-router.get("/tanatool", (reg, res, next) => rkoodCont.tanaTool(reg, res, next));
+router.get("/tanatool/:asukoht", (reg, res, next) => rkoodCont.tanaTool(reg, res, next));
 
 /* -------------------------------------------------------------------------- */
 /*                               Täna tööl list                               */
