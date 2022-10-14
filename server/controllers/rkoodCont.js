@@ -6,9 +6,9 @@ const knex = require("../config/mssql");
 /* -------------------------------------------------------------------------- */
 const tanaTool = (req, res, next) => {
   req.params.asukoht
-  knex("wtanatool")
+  knex.select('data').from("wtanatool")
     .where('asukoht_id', req.params.asukoht)
-    .first()
+    //.first()
     .then((rows) => {
       res.status(200).json(rows);
     })
@@ -31,7 +31,6 @@ const tanaToolList = (req, res, next) => {
 /* -------------------------------------------------------------------------- */
 const tanaPoleTool = (req, res, next) => {
   knex("wtanapoletool")
-    .first()
     .then((rows) => {
       res.status(200).json(rows);
     })
