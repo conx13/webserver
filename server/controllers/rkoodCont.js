@@ -5,9 +5,11 @@ const knex = require("../config/mssql");
 /*                               Täna aktiivsed                               */
 /* -------------------------------------------------------------------------- */
 const tanaTool = (req, res, next) => {
-  req.params.asukoht
-  knex.select('data').from("wtanatool")
-    .where('asukoht_id', req.params.asukoht)
+  req.params.asukoht;
+  knex
+    .select("tulem")
+    .from("wtanatool")
+    .where("asukoht_id", req.params.asukoht)
     //.first()
     .then((rows) => {
       res.status(200).json(rows);
@@ -20,6 +22,7 @@ const tanaTool = (req, res, next) => {
 /* -------------------------------------------------------------------------- */
 const tanaToolList = (req, res, next) => {
   knex("WTanaToolList")
+    .where("asukoht_id", req.params.asukoht)
     .then((rows) => {
       res.status(200).json(rows);
     })
@@ -30,7 +33,10 @@ const tanaToolList = (req, res, next) => {
 /*                            Täna mitte aktiivsed                            */
 /* -------------------------------------------------------------------------- */
 const tanaPoleTool = (req, res, next) => {
-  knex("wtanapoletool")
+  knex
+    .select("tulem")
+    .from("wtanapoletool")
+    .where("asukoht_id", req.params.asukoht)
     .then((rows) => {
       res.status(200).json(rows);
     })

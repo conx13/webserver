@@ -18,21 +18,21 @@ router.get("/tanatool/:asukoht", (reg, res, next) => rkoodCont.tanaTool(reg, res
 /* -------------------------------------------------------------------------- */
 /*                               Täna tööl list                               */
 /* -------------------------------------------------------------------------- */
-router.get("/tanatoollist", (reg, res, next) =>
+router.get("/tanatoollist/:asukoht", (reg, res, next) =>
   rkoodCont.tanaToolList(reg, res, next)
 );
 
 /* -------------------------------------------------------------------------- */
 /*                               Täna pole tööl                               */
 /* -------------------------------------------------------------------------- */
-router.get("/tanapoletool", (reg, res, next) =>
+router.get("/tanapoletool/:asukoht", (reg, res, next) =>
   rkoodCont.tanaPoleTool(reg, res, next)
 );
 
 /* -------------------------------------------------------------------------- */
 /*                           Täna pole tööl nimekiri                          */
 /* -------------------------------------------------------------------------- */
-router.get("/tanapolelist", (reg, res, next) =>
+router.get("/tanapolelist/:asukoht", (reg, res, next) =>
   rkoodCont.tanaPoleToolList(reg, res, next)
 );
 
