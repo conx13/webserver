@@ -48,6 +48,7 @@ const tanaPoleTool = (req, res, next) => {
 /* -------------------------------------------------------------------------- */
 const tanaPoleToolList = (req, res, next) => {
   knex("wtanapolelist")
+  .where("asukoht_id", req.params.asukoht)
     .orderBy("Nimi")
     .then((rows) => {
       res.status(200).json(rows);
