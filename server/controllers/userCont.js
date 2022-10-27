@@ -191,6 +191,34 @@ const tootajaTooGrupp = (req, res, next) => {
   })
   .catch((err) => next(err));
 }
+/* -------------------------------------------------------------------------- */
+/*                               Töötaja asukoht                              */
+/* -------------------------------------------------------------------------- */
+const tootajaAsukoht = (req, res, next) => {
+  knex
+  .select("id", "nimi")
+  .from("asukoht")
+  .orderBy("nimi")
+  .then((rows) => {
+    res.status(200).json(rows);
+  })
+  .catch((err) => next(err));
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                Töötaja firma                               */
+/* -------------------------------------------------------------------------- */
+const tootajaFirmad = (req, res, next) => {
+  knex
+  .select("fgid as id", "nimi")
+  .from("firmagrupp")
+  .orderBy("nimi")
+  .then((rows) => {
+    res.status(200).json(rows);
+  })
+  .catch((err) => next(err));
+}
+
 
 // ────────────────────────────────────────────────────────────────────────────────
 
@@ -488,6 +516,8 @@ module.exports = {
   tootaja,
   tootajaTooGrupp,
   tootajaAjaGrupp,
+  tootajaAsukoht,
+  tootajaFirmad,
   kasEmail,
   otsiFirmat,
   otsi,

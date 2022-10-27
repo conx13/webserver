@@ -76,6 +76,18 @@ router.get('/toogrupp/', (req, res, next) => usersCont.tootajaTooGrupp(req, res,
 
 router.get('/ajarupp/', (req, res, next) => usersCont.tootajaAjaGrupp(req, res, next));
 
+/* -------------------------------------------------------------------------- */
+/*                               Töötaja asukoht                              */
+/* -------------------------------------------------------------------------- */
+router.get('/asukoht', (req, res, next) => usersCont.tootajaAsukoht(req, res, next));
+
+/* -------------------------------------------------------------------------- */
+/*                               Töötaja firmad                               */
+/* -------------------------------------------------------------------------- */
+router.get('/firmad', (req, res, next) => usersCont.tootajaFirmad(req, res, next));
+
+
+
 // ────────────────────────────────────────────────────────────── I ──────────
 //   :::::: O T S I   E M A I L I : :  :   :    :     :        :          :
 // ────────────────────────────────────────────────────────────────────────
