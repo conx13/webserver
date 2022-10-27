@@ -143,7 +143,7 @@ const edituser = async (req, res, next) => {
 // ────────────────────────────────────────────────────────────────────────────────────
 //get('/:id')
 
-const user = (req, res, next) => {
+const tootaja = (req, res, next) => {
   if (!req.params.tid) {
     console.log("Kasutaja ID puududb!");
     return next(new Error("Kasutaja ID puududb!"));
@@ -162,6 +162,21 @@ const user = (req, res, next) => {
     })
     .catch((err) => next(err));
 };
+/* -------------------------------------------------------------------------- */
+/*                               Töötaja töö rupid                            */
+/* -------------------------------------------------------------------------- */
+
+const tootajaTooGrupp = (req, res, next) => {
+  knex
+    .select("toogrupp_id as id", "toogrupp_nimi as nimi")
+    .from("toogrupp")
+    .orderBy("toogrupp_nimi")
+    .then((rows) => {
+      res.status(200).json(rows);
+    })
+    .catch((err) => next(err));
+};
+
 // ────────────────────────────────────────────────────────────────────────────────
 
 //
@@ -455,7 +470,8 @@ module.exports = {
   allUsers,
   newuser,
   edituser,
-  user,
+  tootaja,
+  tootajaTooGrupp,
   kasEmail,
   otsiFirmat,
   otsi,

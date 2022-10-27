@@ -62,7 +62,7 @@ router.get("/tootaja/:tid", (req, res, next) =>
 /*                               töötaja grupid                               */
 /* -------------------------------------------------------------------------- */
 router.get("/tootajagrupid", (req, res, next) =>
-  rkoodCont.tootajagrupp(req, res, next)
+  rkoodCont.tootajaTooGrupp(req, res, next)
 );
 
 /* -------------------------------------------------------------------------- */

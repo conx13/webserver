@@ -86,10 +86,10 @@ const tootaja = (req, res, next) => {
 };
 
 /* -------------------------------------------------------------------------- */
-/*                               Töötaja frupid                               */
+/*                               Töötaja töö rupid                            */
 /* -------------------------------------------------------------------------- */
 
-const tootajagrupp = (req, res, next) => {
+const tootajaTooGrupp = (req, res, next) => {
   knex
     .select("toogrupp_id as id", "toogrupp_nimi as nimi")
     .from("toogrupp")
@@ -171,7 +171,7 @@ module.exports = {
   tanaPoleToolList,
   tanaAktGrupp,
   tootaja,
-  tootajagrupp,
+  tootajaTooGrupp,
   otsiTood,
   kesTegi,
   elemInfo,
