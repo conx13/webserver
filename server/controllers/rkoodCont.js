@@ -71,34 +71,6 @@ const tanaAktGrupp = (req, res, next) => {
     .catch((err) => next(err));
 };
 
-/* -------------------------------------------------------------------------- */
-/*                                 Töötaja TID                                */
-/* -------------------------------------------------------------------------- */
-
-const tootaja = (req, res, next) => {
-  req.params.tid;
-  knex("w_rk_tootajad")
-    .where("TID", req.params.tid)
-    .then((rows) => {
-      res.status(200).json(rows);
-    })
-    .catch((err) => next(err));
-};
-
-/* -------------------------------------------------------------------------- */
-/*                               Töötaja töö rupid                            */
-/* -------------------------------------------------------------------------- */
-
-const tootajaTooGrupp = (req, res, next) => {
-  knex
-    .select("toogrupp_id as id", "toogrupp_nimi as nimi")
-    .from("toogrupp")
-    .orderBy("toogrupp_nimi")
-    .then((rows) => {
-      res.status(200).json(rows);
-    })
-    .catch((err) => next(err));
-};
 
 /* -------------------------------------------------------------------------- */
 /*                                  Otsi tood                                 */
@@ -170,8 +142,6 @@ module.exports = {
   tanaPoleTool,
   tanaPoleToolList,
   tanaAktGrupp,
-  tootaja,
-  tootajaTooGrupp,
   otsiTood,
   kesTegi,
   elemInfo,
