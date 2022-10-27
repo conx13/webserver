@@ -163,20 +163,34 @@ const tootaja = (req, res, next) => {
     .catch((err) => next(err));
 };
 /* -------------------------------------------------------------------------- */
-/*                               Töötaja töö rupid                            */
+/*                               Töötaja töö grupid                           */
 /* -------------------------------------------------------------------------- */
 
-const tootajaTooGrupp = (req, res, next) => {
-  console.log('Tootaja toogrupp');
+const tootajaAjaGrupp = (req, res, next) => {
+  //console.log('Tootaja toogrupp');
   knex
-    .select("toogrupp_id as id", "toogrupp_nimi as nimi")
-    .from("toogrupp")
-    .orderBy("toogrupp_nimi")
+    .select("aid as id", "nimi")
+    .from("ajad")
+    .orderBy("nimi")
     .then((rows) => {
       res.status(200).json(rows);
     })
     .catch((err) => next(err));
 };
+
+/* -------------------------------------------------------------------------- */
+/*                             Töötaja aja grupid                             */
+/* -------------------------------------------------------------------------- */
+const tootajaTooGrupp = (req, res, next) => {
+  knex
+  .select("toogrupp_id as id", "toogrupp_nimi as nimi")
+  .from("toogrupp")
+  .orderBy("toogrupp_nimi")
+  .then((rows) => {
+    res.status(200).json(rows);
+  })
+  .catch((err) => next(err));
+}
 
 // ────────────────────────────────────────────────────────────────────────────────
 
@@ -473,6 +487,7 @@ module.exports = {
   edituser,
   tootaja,
   tootajaTooGrupp,
+  tootajaAjaGrupp,
   kasEmail,
   otsiFirmat,
   otsi,
