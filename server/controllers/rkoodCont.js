@@ -91,8 +91,9 @@ const tootaja = (req, res, next) => {
 
 const tootajagrupp = (req, res, next) => {
   knex
-    .select("toogrupp_id", "toogrupp_nimi")
+    .select("toogrupp_id as id", "toogrupp_nimi as nimi")
     .from("toogrupp")
+    .orderBy("toogrupp_nimi")
     .then((rows) => {
       res.status(200).json(rows);
     })
