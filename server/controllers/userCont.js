@@ -167,6 +167,7 @@ const tootaja = (req, res, next) => {
 /* -------------------------------------------------------------------------- */
 
 const tootajaTooGrupp = (req, res, next) => {
+  console.log('Tootaja toogrupp');
   knex
     .select("toogrupp_id as id", "toogrupp_nimi as nimi")
     .from("toogrupp")
