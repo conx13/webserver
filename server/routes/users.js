@@ -74,7 +74,7 @@ router.get('/toogrupp/', (req, res, next) => usersCont.tootajaTooGrupp(req, res,
 /*                             Töötaja aja grupid                             */
 /* -------------------------------------------------------------------------- */
 
-router.get('/ajarupp/', (req, res, next) => usersCont.tootajaAjaGrupp(req, res, next));
+router.get('/ajagrupp/', (req, res, next) => usersCont.tootajaAjaGrupp(req, res, next));
 
 /* -------------------------------------------------------------------------- */
 /*                               Töötaja asukoht                              */
