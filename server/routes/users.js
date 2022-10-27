@@ -68,7 +68,7 @@ router.get('/:tid', (req, res, next) => usersCont.tootaja(req, res, next));
 /* -------------------------------------------------------------------------- */
 /*                             Kasutaja töö grupp                             */
 /* -------------------------------------------------------------------------- */
-router.get('/toogrupp', (req, res, next) => usersCont.tootajaTooGrupp(req, res, next));
+router.get('/toogrupp/', (req, res, next) => usersCont.tootajaTooGrupp(req, res, next));
 //
 // ────────────────────────────────────────────────────────────── I ──────────
 //   :::::: O T S I   E M A I L I : :  :   :    :     :        :          :
