@@ -18,7 +18,6 @@ const {
   allUsers,
   edituser,
   newuser,
-  user,
     kasEmail,
   otsiFirmat,
   otsi,
@@ -63,7 +62,7 @@ router.put('/edit/:tid', (req, res, next) => edituser(req, res, next));
 //   :::::: K A S U T A J A : :  :   :    :     :        :          :
 // ──────────────────────────────────────────────────────────────────
 //
-router.get('/:tid', (req, res, next) => user(req, res, next));
+router.get('/:tid', (req, res, next) => usersCont.tootaja(req, res, next));
 // ────────────────────────────────────────────────────────────────────────────────
 
 /* -------------------------------------------------------------------------- */
