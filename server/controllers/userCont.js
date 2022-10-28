@@ -169,7 +169,8 @@ const tootaja = (req, res, next) => {
 const tootajaAjaGrupp = (req, res, next) => {
   //console.log('Tootaja toogrupp');
   knex
-    .select("aid as id", "nimi")
+    .select("aid as id", "nimi", knex.raw("'Lõuna ' + Llopp +'-'+ Lalgus as markus"))
+    //.select("aid as id", "nimi", knex.raw("Test:" + "Lalgus"))
     .from("ajad")
     .orderBy("nimi")
     .then((rows) => {
