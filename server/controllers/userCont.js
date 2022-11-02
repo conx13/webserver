@@ -86,21 +86,21 @@ const newuser = async (req, res, next) => {
 
 //
 // ────────────────────────────────────────────────────────────────────────── I ──────────
-//   :::::: M U U D A M E   K A S U T A J A T : :  :   :    :     :        :          :
+//   :::::: M U U D A M E   TÖÖTAJAT: :  :   :    :     :        :          :
 // ────────────────────────────────────────────────────────────────────────────────────
 //put('/edit/:id')
 /* Et selleks et saada teada, kas email on olemas, teen async funktsiooni */
 const edituser = async (req, res, next) => {
-  if (!req.params.id) {
+  if (!req.params.tid) {
     console.log("ID puudu");
     return next(new Error("Id on puudu"));
   }
-  const updateList = {};
+  const updateList = req.body;
   // Tekitame kogu bodys array
-  console.log(req.body, "req.body");
+/*   console.log(req.body, "req.body");
   Object.keys(req.body).forEach((key) => {
     updateList[key] = req.body[key];
-  });
+  }); */
   // Kui on parool, siis krüptime ära
   if (updateList.todate) {
     try {
@@ -124,13 +124,13 @@ const edituser = async (req, res, next) => {
     }
   }
   console.log(updateList, "LIST");
-  knex("users")
-    .where("id", req.params.id)
+  knex("tootajad")
+    .where("tid", req.params.tid)
     .update(updateList)
     .then(() => {
       res.status(200).json({
         status: true,
-        message: "Kasutaja andmed on muudetud!",
+        message: "Töötaja andmed on muudetud!",
       });
     })
     .catch((err) => next(err));
