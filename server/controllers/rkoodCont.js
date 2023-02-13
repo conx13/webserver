@@ -77,14 +77,40 @@ const tanaAktGrupp = (req, res, next) => {
 /* -------------------------------------------------------------------------- */
 const otsiTood = (req, res, next) => {
   console.log(req.params);
-  knex("w_rk_otsi_tood")
-    .whereLike("LEPNR", req.params.lepnr)
-    .modify(function (queryBuilder) {
-      if (req.params.elem == "true") {
-        queryBuilder.andWhere("GGRUPP", "Elemendiliin");
-      }
-    })
-    .andWhereLike("TOO", req.params.too)
+  //knex("w_rk_otsi_tood")
+  knex
+  .select(
+    "JOB.LEPNR",
+    "JOB.JOB AS TOO",
+    "JOB.JID",
+    "JOB.KOGUS",
+    "JOB.LKOOD",
+    "GRUPP.GGRUPP",
+    "GRUPP.GNIMI",
+    knex.raw(
+      "CASE WHEN (COUNT(dbo.RESULT.START) = COUNT(dbo.RESULT.STOP)) THEN 0 ELSE 1 END AS ontoos, " +
+        "CASE WHEN (SUM(RESULT.RESULT) > 0) THEN 1 ELSE 0 END AS onresult"
+    )
+  )
+  .from("GRUPP")
+  .innerJoin("JOB", "GRUPP.GID", "JOB.GID")
+  .leftOuterJoin("RESULT", "JOB.JID", "=", "RESULT.JID")
+  .whereLike("LEPNR", req.params.lepnr)
+  .modify(function (queryBuilder) {
+    if (req.params.elem == "true") {
+      queryBuilder.andWhere("GGRUPP", "Elemendiliin");
+    }
+  })
+  .andWhereLike("JOB.JOB", req.params.too)
+  .groupBy(
+    "JOB.LEPNR",
+    "JOB.JOB",
+    "JOB.JID",
+    "JOB.KOGUS",
+    "GRUPP.GGRUPP",
+    "GRUPP.GNIMI",
+    "JOB.LKOOD"
+  )
     .orderBy([
       { column: "too" },
       { column: "gnimi" },
@@ -95,6 +121,64 @@ const otsiTood = (req, res, next) => {
     })
     .catch((err) => next(err));
 };
+
+/* -------------------------------------------------------------------------- */
+/*                               Otsi ribakoodi                               */
+/* -------------------------------------------------------------------------- */
+
+const otsiRibaKoodi = (req, res, next) => {
+  knex
+    .select(
+      "JOB.LEPNR",
+      "JOB.JOB AS TOO",
+      "JOB.JID",
+      "JOB.KOGUS",
+      "JOB.LKOOD",
+      "GRUPP.GGRUPP",
+      "GRUPP.GNIMI",
+      knex.raw(
+        "CASE WHEN (COUNT(dbo.RESULT.START) = COUNT(dbo.RESULT.STOP)) THEN 0 ELSE 1 END AS ontoos, " +
+          "CASE WHEN (SUM(RESULT.RESULT) > 0) THEN 1 ELSE 0 END AS onresult"
+      )
+    )
+    .from("GRUPP")
+    .innerJoin("JOB", "GRUPP.GID", "JOB.GID")
+    .leftOuterJoin("RESULT", "JOB.JID", "=", "RESULT.JID")
+    .where("JOB.LKOOD", req.params.ribakood)
+    .groupBy(
+      "JOB.LEPNR",
+      "JOB.JOB",
+      "JOB.JID",
+      "JOB.KOGUS",
+      "GRUPP.GGRUPP",
+      "GRUPP.GNIMI",
+      "JOB.LKOOD"
+    )
+    .orderBy([
+      { column: "too" },
+      { column: "gnimi" },
+      { column: "ontoos", order: "desc" },
+    ])
+    .then((rows) => {
+      res.status(200).json(rows);
+    })
+    .catch((err) => next(err));
+};
+/* const otsiRibaKoodi = (req, res, next) => {
+  knex("w_rk_otsi_tood")
+  .where("LKOOD", req.params.ribakood)
+  .orderBy([
+    { column: "too" },
+    { column: "gnimi" },
+    { column: "ontoos", order: "desc" },
+  ])
+  .then((rows) => {
+    res.status(200).json(rows);
+  })
+  .catch((err) => next(err));
+} */
+
+
 
 /* -------------------------------------------------------------------------- */
 /*                                  Kes tegi                                  */
@@ -143,6 +227,7 @@ module.exports = {
   tanaPoleToolList,
   tanaAktGrupp,
   otsiTood,
+  otsiRibaKoodi,
   kesTegi,
   elemInfo,
   elemStats,

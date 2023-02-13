@@ -139,7 +139,7 @@ const edituser = async (req, res, next) => {
 // ────────────────────────────────────────────────────────────────────────────────
 //
 // ────────────────────────────────────────────────────────────────────────── I ──────────
-//   :::::: N A I T A M E   K A S U T A J A T : :  :   :    :     :        :          :
+//   :::::: N A I T A M E   TÖÖTAJAT: :  :   :    :     :        :          :
 // ────────────────────────────────────────────────────────────────────────────────────
 //get('/:id')
 
@@ -313,14 +313,16 @@ const otsi = (req, res, next) => {
   }
   const otsiText = `%${req.params.otsi}%`;
   let akt = "";
-
+  let asukoht = req.params.asukoht;
   if (!req.params.akt) {
     akt = "%";
   } else {
     akt = req.params.akt;
   }
+
   return knex("w_rk_tootajad")
-    .where("aktiivne", "like", akt)
+    .where("aktiivne", akt)
+    .andWhere("asukoht_id", asukoht)
     .where((w) =>
       w
         .orWhere("enimi", "like", otsiText)

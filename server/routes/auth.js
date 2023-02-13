@@ -46,6 +46,9 @@ router.post('/login', (req, res, next) => {
   })(req, res);
 });
 
+/* -------------------------------------------------------------------------- */
+/*                               Kas on loginud                               */
+/* -------------------------------------------------------------------------- */
 router.get('/authstatus', isLoggedIn, (req, res) => {
   const { user } = req;
   return res.status(200).send({
@@ -53,7 +56,9 @@ router.get('/authstatus', isLoggedIn, (req, res) => {
     user,
   });
 });
-
+/* -------------------------------------------------------------------------- */
+/*                                   Logout                                   */
+/* -------------------------------------------------------------------------- */
 router.get('/logout', (req, res) => {
   req.logout();
   req.session.destroy();

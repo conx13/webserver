@@ -56,7 +56,7 @@ app.use(basicAuth({
 
 app.use(session({
   genid: () => {
-    console.log('Kasutaja ei ole sisse loginud!');
+    console.log('Session: Kasutaja ei ole sisse loginud!');
     return uuidv4();
   }, // use uuid for session id
   name: 'webProjekt.sess',
