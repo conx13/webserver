@@ -13,7 +13,7 @@ passport.serializeUser((user, done) => done(null, user));
 // võtame sessionist user.id ja otsime sellele värsked andmed külge
 passport.deserializeUser((user, done) => {
   knex('users')
-    .select('id', 'firma', 'email', 'roll', 'todate', 'pilt')
+    .select('id', 'enimi', 'pnimi','email', 'pilt','todate','roll')
     .where('id', user.id)
     .then((row) => {
       done(null, row[0]);
@@ -26,7 +26,7 @@ passport.use(new LocalStrategy(
   { usernameField: 'email', session: false },
   (email, password, done) => {
     knex('users')
-      .select('id', 'firma', 'email', 'roll', 'todate', 'password', 'pilt')
+      .select('id', 'enimi', 'pnimi','email', 'pilt','todate','roll', 'password')
       .where('email', email)
       .then((rows) => {
         const user = rows[0];
@@ -41,7 +41,7 @@ passport.use(new LocalStrategy(
           aktkpv.setHours(23); // Lisame tunnid et kell ei oleks väiksem hetkest
           const tanakpv = Date.now();
           if (aktkpv < tanakpv) { // Kui kpv on väiksem hetkest
-            return done(null, false, { message: 'Konto ei ole aktiivne!\n Võta ühendust projektijuhiga!\n' });
+            return done(null, false, { message: 'Konto ei ole aktiivne!\n Võta ühendust adminniga!\n' });
           }
         }
         // Kui on vale parool

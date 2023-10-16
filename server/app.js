@@ -8,7 +8,7 @@ const path = require('path');
 const bParser = require('body-parser');
 const session = require('express-session');
 const { v4: uuidv4 } = require('uuid');
-const basicAuth = require('express-basic-auth')
+//const basicAuth = require('express-basic-auth')
 
 // const history = require('connect-history-api-fallback');
 const passport = require('./config/passport');
@@ -48,11 +48,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/pics', express.static(path.join(__dirname, 'public/pildid/userPics')));
 app.use('/docs', express.static(path.join(__dirname, 'lepingdata')));
 //Ajutiselt kasutame basicAuth funktsiooni
-app.use(basicAuth({
+/* app.use(basicAuth({
   users: {
       'matek': '123£-UYh4-8UXx',
   }
-}))
+})) */
 
 app.use(session({
   genid: () => {
