@@ -27,6 +27,7 @@ const users = require('./routes/users');
 const test = require('./routes/test');
 const projekt = require('./routes/projekt');
 const rkood = require('./routes/rkood');
+const kasutaja=require('./routes/kasutaja')
 
 /**
 *Module Settings and Config
@@ -78,6 +79,7 @@ app.use('/api/users', users);
 app.use('/api/test', test);
 app.use('/api/rkood', rkood);
 app.use('/api/projekt', projekt);
+app.use('/api/kasutaja', kasutaja);
 
 
 /**

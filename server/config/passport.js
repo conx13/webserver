@@ -12,8 +12,8 @@ passport.serializeUser((user, done) => done(null, user));
 
 // võtame sessionist user.id ja otsime sellele värsked andmed külge
 passport.deserializeUser((user, done) => {
-  knex('users')
-    .select('id', 'enimi', 'pnimi','email', 'pilt','todate','roll')
+  knex('wusers')
+    .select('id', 'enimi', 'pnimi','email', 'pilt','todate','roll','asukoht_id', 'asukoht')
     .where('id', user.id)
     .then((row) => {
       done(null, row[0]);
@@ -25,8 +25,8 @@ passport.deserializeUser((user, done) => {
 passport.use(new LocalStrategy(
   { usernameField: 'email', session: false },
   (email, password, done) => {
-    knex('users')
-      .select('id', 'enimi', 'pnimi','email', 'pilt','todate','roll', 'password')
+    knex('wusers')
+      .select('id', 'enimi', 'pnimi','email', 'pilt','todate','roll','asukoht_id','asukoht', 'password')
       .where('email', email)
       .then((rows) => {
         const user = rows[0];

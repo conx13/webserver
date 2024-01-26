@@ -1,9 +1,9 @@
 const router = require("express").Router();
 
 const rkoodCont = require("../controllers/rkoodCont");
-//const abiks = require('../utils/utils');
+// const abiks = require('../utils/utils');
 
-//const {isLoggedIn} = abiks;
+// const {isLoggedIn} = abiks;
 
 /* -------------------------------------------------------------------------- */
 /*                                    Test                                    */

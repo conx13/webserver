@@ -23,6 +23,7 @@ const tanaTool = (req, res, next) => {
 const tanaToolList = (req, res, next) => {
   knex("WTanaToolList")
     .where("asukoht_id", req.params.asukoht)
+    .orderBy("JRK")
     .then((rows) => {
       res.status(200).json(rows);
     })
@@ -62,9 +63,14 @@ const tanaPoleToolList = (req, res, next) => {
 
 const tanaAktGrupp = (req, res, next) => {
   req.params.ggrupp;
+  console.log(req.user,'USER');
   knex("wLyhikeTanaTool_kogus")
-    .where("GGRUPP", req.params.ggrupp)
-    .orderBy([{ column: "TOO" }, { column: "START" }, { column: "ENIMI" }])
+    .where((builder)=>{
+      builder.where("GGRUPP", req.params.ggrupp);
+      if (req.query.asukoht)
+        builder.andWhere('asukoht_id', req.query.asukoht);
+    })
+    .orderBy([{ column: "LEPNR" },{ column: "TOO" }, { column: "START", order: 'desc' }])
     .then((rows) => {
       res.status(200).json(rows);
     })
