@@ -187,6 +187,57 @@ const lisaPilt = async (req, res, next) => {
 };
 
 /* -------------------------------------------------------------------------- */
+/*                              Muudame kasutajat                             */
+/* -------------------------------------------------------------------------- */
+//put('/edit/:id')
+const muudameKasutajat = async (req, res, next) => {
+  if (!req.params.id) {
+    console.log("ID puudu");
+    return next(new Error("Id on puudu"));
+  }
+  const updateList = req.body;
+  // Tekitame kogu bodys array
+  /*   console.log(req.body, "req.body");
+  Object.keys(req.body).forEach((key) => {
+    updateList[key] = req.body[key];
+  }); */
+  // Kui on parool, siis krüptime ära
+  if (updateList.todate) {
+    try {
+      updateList.todate = new Date(updateList.todate);
+    } catch (error) {
+      console.log("kpv formaat vale");
+      return next(error);
+    }
+  }
+  if (updateList.password) {
+    try {
+      // ootame kuni on kryptitud ja lisame arraysse
+      // updateList.password = await bcrypt.hash();
+      updateList.password = await bcrypt.hash(
+        updateList.password.trim(),
+        saltRounds
+      );
+    } catch (error) {
+      console.log("bcryp error!");
+      return next(error);
+    }
+  }
+  console.log(updateList, "LIST");
+  knex("users")
+    .where("id", req.params.id)
+    .update(updateList)
+    .then(() => {
+      res.status(200).json({
+        status: true,
+        message: "Kasutaja andmed on muudetud!",
+      });
+    })
+    .catch((err) => next(err));
+  return null;
+};
+
+/* -------------------------------------------------------------------------- */
 /*                              Leiame asukohad                              */
 /* -------------------------------------------------------------------------- */
 const getAsukohad = (req,res, next) =>{
@@ -199,9 +250,25 @@ const getAsukohad = (req,res, next) =>{
   .catch((err) => next(err));
 }
 
+/* -------------------------------------------------------------------------- */
+/*                         Otsime viimati aktiivse aja                        */
+/* -------------------------------------------------------------------------- */
+const viimatiAktiivne=(req, res, next)=>{
+  return knex('result')
+  .select('stop')
+  .where('tid', req.params.tid)
+  .first()
+  .orderBy('stop','desc')
+  .then((rows)=>{
+    res.status(200).json(rows)
+  })
+  .catch((err)=>next(err))
+
+}
+
 
 /* ------------------------------ Export module ----------------------------- */
 
   module.exports = {
-    uusKasutaja, getKasutaja, lisaPilt, getAsukohad
+    uusKasutaja, getKasutaja, muudameKasutajat, lisaPilt, getAsukohad, viimatiAktiivne
 }
