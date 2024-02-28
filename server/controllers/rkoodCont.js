@@ -63,7 +63,6 @@ const tanaPoleToolList = (req, res, next) => {
 
 const tanaAktGrupp = (req, res, next) => {
   req.params.ggrupp;
-  console.log(req.user,'USER');
   knex("wLyhikeTanaTool_kogus")
     .where((builder)=>{
       builder.where("GGRUPP", req.params.ggrupp);

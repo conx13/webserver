@@ -250,25 +250,11 @@ const getAsukohad = (req,res, next) =>{
   .catch((err) => next(err));
 }
 
-/* -------------------------------------------------------------------------- */
-/*                         Otsime viimati aktiivse aja                        */
-/* -------------------------------------------------------------------------- */
-const viimatiAktiivne=(req, res, next)=>{
-  return knex('result')
-  .select('stop')
-  .where('tid', req.params.tid)
-  .first()
-  .orderBy('stop','desc')
-  .then((rows)=>{
-    res.status(200).json(rows)
-  })
-  .catch((err)=>next(err))
 
-}
 
 
 /* ------------------------------ Export module ----------------------------- */
 
   module.exports = {
-    uusKasutaja, getKasutaja, muudameKasutajat, lisaPilt, getAsukohad, viimatiAktiivne
+    uusKasutaja, getKasutaja, muudameKasutajat, lisaPilt, getAsukohad,
 }

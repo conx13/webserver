@@ -1,35 +1,39 @@
 /**
-*Create router instance
-*/
+ *Create router instance
+ */
 const router = require('express').Router();
 
 /**
-*Module dependencies
-*/
+ *Module dependencies
+ */
 
 const usersCont = require('../controllers/userCont');
 const abiks = require('../utils/utils');
 
 /**
-*Module Variables
-*/
+ *Module Variables
+ */
 
 const {
   allUsers,
   edituser,
   newuser,
-    kasEmail,
+  kasEmail,
   otsiFirmat,
   otsi,
   delPilt,
   lisaPilt,
   pildiCorrect,
+  viimatiAktiivne,
+  tooAjaGrupp,
+  tooLopp,
+  uusToo,
 } = usersCont;
 
 const { isLoggedIn } = abiks;
 /**
-*Middleware
-*/
+ *Middleware
+ */
 
 router.get('/test', isLoggedIn, (req, res) => res.status(200).send('TEST'));
 
@@ -66,25 +70,58 @@ router.get('/user/:tid', (req, res, next) => usersCont.tootaja(req, res, next));
 /* -------------------------------------------------------------------------- */
 /*                             Töötaja töö grupp                             */
 /* -------------------------------------------------------------------------- */
-router.get('/toogrupp/', (req, res, next) => usersCont.tootajaTooGrupp(req, res, next));
+router.get('/toogrupp/', (req, res, next) =>
+  usersCont.tootajaTooGrupp(req, res, next)
+);
 //
 /* -------------------------------------------------------------------------- */
 /*                             Töötaja aja grupid                             */
 /* -------------------------------------------------------------------------- */
 
-router.get('/ajagrupp/', (req, res, next) => usersCont.tootajaAjaGrupp(req, res, next));
+router.get('/ajagrupp/', (req, res, next) =>
+  usersCont.tootajaAjaGrupp(req, res, next)
+);
 
 /* -------------------------------------------------------------------------- */
 /*                               Töötaja asukoht                              */
 /* -------------------------------------------------------------------------- */
-router.get('/asukoht', (req, res, next) => usersCont.tootajaAsukoht(req, res, next));
+router.get('/asukoht', (req, res, next) =>
+  usersCont.tootajaAsukoht(req, res, next)
+);
 
 /* -------------------------------------------------------------------------- */
 /*                               Töötaja firmad                               */
 /* -------------------------------------------------------------------------- */
-router.get('/firmad', (req, res, next) => usersCont.tootajaFirmad(req, res, next));
+router.get('/firmad', (req, res, next) =>
+  usersCont.tootajaFirmad(req, res, next)
+);
 
+/* -------------------------------------------------------------------------- */
+/*                         Otsime viimati aktiivse aja                        */
+/* -------------------------------------------------------------------------- */
+router.get('/viimatiakt/:tid', (req, res, next) =>
+  viimatiAktiivne(req, res, next)
+);
 
+/* -------------------------------------------------------------------------- */
+/*                       Võtame töötajale tema ajagrupid                      */
+/* -------------------------------------------------------------------------- */
+
+router.get('/tootaja/ajagrupp/:tid', (req, res, next) =>
+  tooAjaGrupp(req, res, next)
+);
+
+/* -------------------------------------------------------------------------- */
+/*                         Lõpetame töötaja hetke töö                         */
+/* -------------------------------------------------------------------------- */
+
+router.put('/toolopp/:rid', (req, res, next) => tooLopp(req, res, next));
+
+/* -------------------------------------------------------------------------- */
+/*                          Lisame töötajale uue töö                          */
+/* -------------------------------------------------------------------------- */
+
+router.post('/uustoo/:tid', (req, res, next) => uusToo(req, res, next));
 
 // ────────────────────────────────────────────────────────────── I ──────────
 //   :::::: O T S I   E M A I L I : :  :   :    :     :        :          :
@@ -104,7 +141,9 @@ router.get('/otsifirma/:firma', (req, res, next) => otsiFirmat(req, res, next));
 //   :::::: O T S I N : :  :   :    :     :        :          :
 // ────────────────────────────────────────────────────────────
 //
-router.get('/otsi/:otsi/:akt/:asukoht', (req, res, next) => otsi(req, res, next));
+router.get('/otsi/:otsi/:akt/:asukoht', (req, res, next) =>
+  otsi(req, res, next)
+);
 // ────────────────────────────────────────────────────────────────────────────────
 //
 // ────────────────────────────────────────────────────────────────────── I ──────────
@@ -128,8 +167,7 @@ router.post('/editpic/:id', (req, res, next) => lisaPilt(req, res, next));
 router.get('/pildid/prygi', (req, res, next) => pildiCorrect(req, res, next));
 // ────────────────────────────────────────────────────────────────────────────────
 
-
 /**
-*Export Module
-*/
+ *Export Module
+ */
 module.exports = router;

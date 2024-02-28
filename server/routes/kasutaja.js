@@ -2,7 +2,7 @@ const router=require('express').Router()
 //const abiks = require('../utils/utils');
 
 const kasutajaCont=require('../controllers/kasutajaCont')
-const {getKasutaja, lisaPilt, getAsukohad, muudameKasutajat, viimatiAktiivne}=kasutajaCont
+const {getKasutaja, lisaPilt, getAsukohad, muudameKasutajat,}=kasutajaCont
 
 //const { isLoggedIn } = abiks;
 
@@ -26,10 +26,6 @@ router.get('/asukohad/list', (req,res,next) =>getAsukohad(req,res,next))
 /* -------------------------------------------------------------------------- */
 router.put('/edit/:id', (req, res, next)=>muudameKasutajat(req, res, next))
 
-/* -------------------------------------------------------------------------- */
-/*                         Otsime viimati aktiivse aja                        */
-/* -------------------------------------------------------------------------- */
-router.get('/viimatiakt/:tid', (req,res,next)=>viimatiAktiivne(req,res,next))
 
 /* ------------------------------ Module export ----------------------------- */
 module.exports=router
