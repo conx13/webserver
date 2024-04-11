@@ -115,7 +115,7 @@ router.get('/tootaja/ajagrupp/:tid', (req, res, next) =>
 /*                         Lõpetame töötaja hetke töö                         */
 /* -------------------------------------------------------------------------- */
 
-router.put('/toolopp/:rid', (req, res, next) => tooLopp(req, res, next));
+router.put('/toolopp/:rid', tooLopp);
 
 /* -------------------------------------------------------------------------- */
 /*                          Lisame töötajale uue töö                          */

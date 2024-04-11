@@ -6,9 +6,28 @@ const bcrypt = require('bcrypt');
 const multer = require('multer');
 const fs = require('fs-extra');
 const path = require('path');
+const sql = require('mssql');
+
+//validator:
+const { check, validationResult } = require('express-validator');
 
 const abiks = require('../utils/utils');
 const knex = require('../config/mssql');
+
+const sqlConfig = {
+  user: 'Hillar',
+  password: 'conx13',
+  database: 'Ribakood',
+  server: '10.0.30.2',
+  options: {
+    encrypt: false, // Disable SSL/TLS
+  },
+  pool: {
+    max: 10,
+    min: 0,
+    idleTimeoutMillis: 30000,
+  },
+};
 
 // paneme paika piltide asukoha
 const pildiPath = path.join(__dirname, '../public/pildid/userPics/');
@@ -141,26 +160,25 @@ const edituser = async (req, res, next) => {
 // ────────────────────────────────────────────────────────────────────────── I ──────────
 //   :::::: N A I T A M E   TÖÖTAJAT: :  :   :    :     :        :          :
 // ────────────────────────────────────────────────────────────────────────────────────
-//get('/:id')
+//get('/user/:tid')
 
-const tootaja = (req, res, next) => {
+const tootaja = async (req, res, next) => {
   if (!req.params.tid) {
     console.log('Kasutaja ID puududb!');
     return next(new Error('Kasutaja ID puududb!'));
   }
-  return knex('w_rk_tootajad')
-    .where('TID', req.params.tid)
-    .then((rows) => {
-      if (!rows.length) {
-        res.status(500).json({
-          status: false,
-          message: 'Sellise ID-ga kasutajat ei leia!',
-        });
-      } else {
-        res.status(200).json(rows);
-      }
-    })
-    .catch((err) => next(err));
+  try {
+    let pool = await sql.connect(sqlConfig);
+    let data = await pool
+      .request()
+      .input('tid', sql.NVarChar, req.params.tid)
+      .query(
+        'select * from w_rk_tootjad_lyh with (noexpand) where tid = @tid '
+      );
+    res.json(data.recordset);
+  } catch (err) {
+    return next(new Error(err));
+  }
 };
 /* -------------------------------------------------------------------------- */
 /*                        Kõik tööaja grupidde list                           */
@@ -191,9 +209,7 @@ const tootajaTooGrupp = (req, res, next) => {
     .select('toogrupp_id as id', 'toogrupp_nimi as nimi')
     .from('toogrupp')
     .orderBy('toogrupp_nimi')
-    .then((rows) => {
-      res.status(200).json(rows);
-    })
+    .then((rows) => res.status(200).json(rows))
     .catch((err) => next(err));
 };
 /* -------------------------------------------------------------------------- */
@@ -204,9 +220,7 @@ const tootajaAsukoht = (req, res, next) => {
     .select('id', 'nimi')
     .from('asukoht')
     .orderBy('nimi')
-    .then((rows) => {
-      res.status(200).json(rows);
-    })
+    .then((rows) => res.status(200).json(rows))
     .catch((err) => next(err));
 };
 
@@ -218,9 +232,7 @@ const tootajaFirmad = (req, res, next) => {
     .select('fgid as id', 'nimi')
     .from('firmagrupp')
     .orderBy('nimi')
-    .then((rows) => {
-      res.status(200).json(rows);
-    })
+    .then((rows) => res.status(200).json(rows))
     .catch((err) => next(err));
 };
 /* -------------------------------------------------------------------------- */
@@ -231,9 +243,7 @@ const viimatiAktiivne = (req, res, next) => {
     .first('start')
     .where('tid', req.params.tid)
     .orderBy('start', 'desc')
-    .then((rows) => {
-      res.status(200).json(rows);
-    })
+    .then((rows) => res.status(200).json(rows))
     .catch((err) => next(err));
 };
 
@@ -245,9 +255,7 @@ const tooAjaGrupp = (req, res, next) => {
     .first('Tooalgus', 'Toolopp', 'Lalgus', 'Llopp')
     .innerJoin('tootajad', 'ajad.aid', 'tootajad.ajagupp')
     .where('tootajad.tid', req.params.tid)
-    .then((rows) => {
-      res.status(200).json(rows);
-    })
+    .then((rows) => res.status(200).json(rows))
     .catch((err) => next(err));
 };
 
@@ -259,18 +267,46 @@ rid
 stop
 result
 */
-const tooLopp = (req, res, next) => {
-  return knex('result')
-    .where({ rid: req.params.rid })
-    .update({
-      stop: req.body.stop,
-      result: req.body.result,
-      kasutaja: req.user.email, //lisame sisse logitud kasutaja nime
-    })
-    .then((rows) => {
-      res.status(200).json(rows);
-    })
-    .catch((err) => next(err));
+const tooLopp = async (req, res, next) => {
+  // Define validation rules
+  const validationRules = [
+    check('stop')
+      .notEmpty()
+      .withMessage('Stop on tyhi')
+      .custom((value) => {
+        const regex = /^\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}(?::\d{2})?$/;
+        if (!regex.test(value)) {
+          throw new Error('Stop peab olema YYYY-MM-DD[T ]HH:MM');
+        }
+        return true;
+      }),
+    check('result')
+      .notEmpty()
+      .withMessage('Result on tyhi')
+      .isNumeric()
+      .withMessage('Result peab olema nr!'),
+  ];
+  // Validate the request body
+  await Promise.all(validationRules.map((rule) => rule.run(req)));
+  const errors = validationResult(req);
+  //Kui ei ole errorit
+  if (!errors.isEmpty()) {
+    console.error(errors.array(), 'Töö lõpp ERROR');
+    const errorMessages = errors.array().map((error) => error.msg);
+    return res.status(400).json(errorMessages);
+  }
+  try {
+    await knex('result')
+      .where({ rid: req.params.rid })
+      .update({
+        stop: req.body.stop,
+        result: req.body.result,
+        kasutaja: req.user.email, // Add logged-in user email
+      })
+      .then(() => res.status(200).json('Ok'));
+  } catch (error) {
+    next(error);
+  }
 };
 
 /* -------------------------------------------------------------------------- */
@@ -279,19 +315,51 @@ const tooLopp = (req, res, next) => {
 //tid
 //jid
 //start
-const uusToo = (req, res, next) => {
-  console.log('uus töö');
-  return knex('result')
-    .insert({
-      tid: req.params.tid,
-      jid: req.body.jid,
-      start: req.body.start,
-      kasutaja: req.user.email,
-    })
-    .then((rows) => {
-      res.status(200).json(rows);
-    })
-    .catch((err) => next(err));
+const uusToo = async (req, res, next) => {
+  // Define validation rules
+  const validationRules = [
+    check('tid')
+      .notEmpty()
+      .withMessage('tid is required')
+      .isNumeric()
+      .withMessage('tid must be a number'),
+    check('jid')
+      .notEmpty()
+      .withMessage('jid is required')
+      .isNumeric()
+      .withMessage('jid must be a number'),
+    check('start')
+      .notEmpty()
+      .withMessage('Start on tyhi')
+      .custom((value) => {
+        const regex = /^\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}(?::\d{2})?$/;
+        if (!regex.test(value)) {
+          throw new Error('Start peab olema YYYY-MM-DD[T ]HH:MM');
+        }
+        return true;
+      }),
+  ];
+  // Validate the request body
+  await Promise.all(validationRules.map((rule) => rule.run(req)));
+  const errors = validationResult(req);
+
+  // Check for validation errors
+  if (!errors.isEmpty()) {
+    const errorMessages = errors.array().map((error) => error.msg);
+    return res.status(400).json(errorMessages);
+  }
+  try {
+    knex('result')
+      .insert({
+        tid: req.params.tid,
+        jid: req.body.jid,
+        start: req.body.start,
+        kasutaja: req.user.email,
+      })
+      .then(() => res.status(200).json('Ok'));
+  } catch (error) {
+    next(error);
+  }
 };
 
 // ────────────────────────────────────────────────────────────────────────────────
@@ -326,33 +394,35 @@ const allUsers = (req, res) =>
 //   :::::: O T S I M E : :  :   :    :     :        :          :
 // ──────────────────────────────────────────────────────────────
 //'/otsi/:otsi/:akt'
+/**
+ * @param {Text} otsi - otsi text
+ * @param {Text} akt - kas ainult aktiivsed
+ * @param {Text} asukoht - description
+ */
 
-const otsi = (req, res, next) => {
+const otsi = async (req, res, next) => {
   if (!req.params.otsi) {
     return next(new Error('Otsing puudub!'));
   }
-  const otsiText = `%${req.params.otsi}%`;
-  let akt = '';
-  let asukoht = req.params.asukoht;
-  if (!req.params.akt) {
-    akt = '%';
-  } else {
+  let akt = '%';
+  if (req.params.akt) {
     akt = req.params.akt;
   }
-
-  return knex('w_rk_tootajad')
-    .where('aktiivne', akt)
-    .andWhere('asukoht_id', asukoht)
-    .where((w) =>
-      w
-        .orWhere('enimi', 'like', otsiText)
-        .orWhere('pnimi', 'like', otsiText)
-        .orWhere('firma', 'like', otsiText)
-        .orWhere('toogrupp_nimi', 'like', otsiText)
-        .orWhere('Ajanimi', 'like', otsiText)
-    )
-    .then((rows) => res.json(rows))
-    .catch((err) => next(err));
+  try {
+    let pool = await sql.connect(sqlConfig);
+    let data = await pool
+      .request()
+      .input('akt', sql.NVarChar, akt)
+      .input('asukoht', sql.Int, req.params.asukoht)
+      .input('otsiText', sql.NVarChar, `%${req.params.otsi}%`)
+      .query(
+        'select * from w_rk_tootjad_lyh with (noexpand) where aktiivne = @akt and asukoht_id = @asukoht and (enimi like @otsiText or pnimi like @otsiText) '
+      );
+    res.json(data.recordset);
+  } catch (err) {
+    return next(new Error(err));
+    //next(err);
+  }
 };
 // ────────────────────────────────────────────────────────────────────────────────
 
@@ -536,12 +606,12 @@ module.exports = {
   allUsers,
   newuser,
   edituser,
-  tootaja,
+  tootaja, //mssql
   tootajaTooGrupp,
   tootajaAjaGrupp,
   tootajaAsukoht,
   tootajaFirmad,
-  otsi,
+  otsi, //mssql
   delPilt,
   lisaPilt,
   pildiCorrect,

@@ -1,11 +1,11 @@
-module.exports = require("knex")({
-  client: "mssql",
-  debug: true,
+module.exports = require('knex')({
+  client: 'mssql',
+  debug: false,
   connection: {
-    user: "Hillar",
-    password: "conx13",
-    database: "Ribakood",
-    server: "10.0.30.2",
+    user: 'Hillar',
+    password: 'conx13',
+    database: 'Ribakood',
+    server: '10.0.30.2',
     pool: {
       max: 10,
       min: 0,
