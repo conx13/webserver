@@ -56,6 +56,10 @@ app.use(
   '/api/pics',
   express.static(path.join(__dirname, 'public/pildid/userPics'))
 );
+app.use(
+  '/api/kasutaja/pics',
+  express.static(path.join(__dirname, 'public/pildid/kasutajaPics'))
+);
 app.use('/docs', express.static(path.join(__dirname, 'lepingdata')));
 
 app.use(

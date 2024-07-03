@@ -1,21 +1,7 @@
 //const { json } = require('body-parser');
-const knex = require('../config/mssql');
+const knex = require('../config/knex');
 const sql = require('mssql');
-
-const sqlConfig = {
-  user: 'Hillar',
-  password: 'conx13',
-  database: 'Ribakood',
-  server: '10.0.30.2',
-  options: {
-    encrypt: false, // Disable SSL/TLS
-  },
-  pool: {
-    max: 10,
-    min: 0,
-    idleTimeoutMillis: 30000,
-  },
-};
+const sqlConfig = require('../config/mssql');
 
 /* -------------------------------------------------------------------------- */
 /*                               Täna aktiivsed                               */
@@ -234,7 +220,7 @@ const kesTegiUus = async (req, res, next) => {
       .request()
       .input('jid', sql.Int, req.params.jid)
       .query(
-        "SELECT dbo.RESULT.JID, FORMAT(dbo.RESULT.START, 'dd.MM.yyyy') AS kpv, dbo.TOOTAJAD.PNIMI + ' ' + dbo.TOOTAJAD.ENIMI AS nimi, dbo.TOOTAJAD.PNIMI, dbo.TOOTAJAD.ENIMI, dbo.TOOTAJAD.pilt, dbo.TOOTAJAD.TID FROM dbo.RESULT INNER JOIN dbo.TOOTAJAD ON dbo.RESULT.TID = dbo.TOOTAJAD.TID where JID=@jid group by FORMAT(dbo.RESULT.START, 'dd.MM.yyyy'),nimi, JID, Pnimi, enimi, pilt, dbo.TOOTAJAD.TID order by kpv desc,pnimi"
+        "SELECT dbo.RESULT.JID,FORMAT(dbo.RESULT.START, 'dd.MM.yyyy') AS kpv, dbo.TOOTAJAD.PNIMI + ' ' + dbo.TOOTAJAD.ENIMI AS nimi, (SUBSTRING(dbo.TOOTAJAD.PNIMI,1,1)+SUBSTRING(dbo.TOOTAJAD.ENIMI,1,1)) as tahed,   FORMAT(dbo.RESULT.START, 'HH:mm') as start,FORMAT(dbo.RESULT.STOP, 'HH:mm') as stop, dbo.TOOTAJAD.pilt, dbo.TOOTAJAD.TID FROM dbo.RESULT INNER JOIN dbo.TOOTAJAD ON dbo.RESULT.TID = dbo.TOOTAJAD.TID where JID=@jid group by dbo.RESULT.START,dbo.RESULT.STOP,nimi, JID, Pnimi, enimi, pilt, dbo.TOOTAJAD.TID order by kpv desc, pnimi"
       );
     res.json(data.recordset);
   } catch (err) {

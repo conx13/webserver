@@ -12,7 +12,7 @@ const sql = require('mssql');
 const { check, validationResult } = require('express-validator');
 
 const abiks = require('../utils/utils');
-const knex = require('../config/mssql');
+const knex = require('../config/knex');
 
 const sqlConfig = {
   user: 'Hillar',
@@ -433,23 +433,13 @@ const otsi = async (req, res, next) => {
 //
 
 const delPilt = async (req, res, next) => {
-  console.log('DEL pilt');
-  if (!req.params.pilt) {
+  if (!req.query.pilt) {
     return next(new Error('Pilt puudub!'));
   }
-  const otsiPilt = req.params.pilt;
+  const otsiPilt = req.query.pilt;
 
-  const delDbPilt = async () => {
-    await knex('tootajad')
-      .where('pilt', otsiPilt)
-      .update('pilt', null)
-      .catch((err) => {
-        throw err;
-      });
-  };
   const kustutaFail = async () => {
     try {
-      await delDbPilt(otsiPilt);
       await fs.remove(`${pildiPath}${otsiPilt}`);
       // await delFile(`${pildiPath}${otsiPilt}`);
       return res.status(200).send({
@@ -461,7 +451,36 @@ const delPilt = async (req, res, next) => {
       return next(error);
     }
   };
-  return kustutaFail();
+
+  const delDbPilt = async () => {
+    try {
+      const pool = await sql.connect(sqlConfig);
+      const request = pool.request();
+      request.input('pilt', sql.NVarChar, otsiPilt);
+      request.query(
+        'UPDATE dbo.tootajad SET pilt=null WHERE pilt=@pilt',
+        (err, result) => {
+          if (err) {
+            console.log(err.message, 'sqli viga');
+            return next(err.message);
+          } else {
+            if (result.rowsAffected > 0) {
+              // if (result.rowsAffected) {
+              //Kui andmebaasit leidsime faili ja
+              //kustatsime siis kustuatme ka päris faili
+              kustutaFail();
+            } else {
+              return next('Pilti ei kustatud.');
+            }
+          }
+        }
+      );
+    } catch (err) {
+      console.log(err.message, 'msql ühnenduses viga');
+      return next(err.message);
+    }
+  };
+  return delDbPilt();
 };
 // ────────────────────────────────────────────────────────────────────────────────
 //
