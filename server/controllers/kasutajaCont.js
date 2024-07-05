@@ -35,6 +35,7 @@ const upload = multer({ storage }).single('pilt');
 /* -------------------------------------------------------------------------- */
 
 const uusKasutaja = async (req, res, next) => {
+  console.log(req.body, 'REQ body');
   if (!req.body.firma_id || !req.body.email || !req.body.password) {
     return next(new Error('Andmed on puudu!'));
   }
@@ -83,7 +84,7 @@ const uusKasutaja = async (req, res, next) => {
       .input('markus', sql.NVarChar, user.markus || null)
       .input('pilt', sql.NVarChar, user.pilt || null)
       .input('todate', sql.DateTime, user.todate || null)
-      .input('password', sql.DateTime, user.password)
+      .input('password', sql.NVarChar, user.password)
       .input('firma_id', sql.Int, user.firma_id || null)
       .input('asukoht_id', sql.Int, user.asukoht_id || null)
 

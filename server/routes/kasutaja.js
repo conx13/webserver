@@ -2,10 +2,21 @@ const router = require('express').Router();
 //const abiks = require('../utils/utils');
 
 const kasutajaCont = require('../controllers/kasutajaCont');
-const { getKasutaja, lisaPilt, delPilt, getAsukohad, muudameKasutajat } =
-  kasutajaCont;
+const {
+  uusKasutaja,
+  getKasutaja,
+  lisaPilt,
+  delPilt,
+  getAsukohad,
+  muudameKasutajat,
+} = kasutajaCont;
 
 //const { isLoggedIn } = abiks;
+
+/* -------------------------------------------------------------------------- */
+/*                             Lisame uue kasutaja                            */
+/* -------------------------------------------------------------------------- */
+router.post('/', (req, res, next) => uusKasutaja(req, res, next));
 
 /* -------------------------------------------------------------------------- */
 /*                              Kasutaja ID järgi                             */
