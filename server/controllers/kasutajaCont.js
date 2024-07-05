@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs-extra');
 const abiks = require('../utils/utils');
 const multer = require('multer');
-const { log } = require('console');
+const { log, error } = require('console');
 
 const saltRounds = 10;
 const { resizePilt } = abiks;
@@ -35,27 +35,34 @@ const upload = multer({ storage }).single('pilt');
 /* -------------------------------------------------------------------------- */
 
 const uusKasutaja = async (req, res, next) => {
-  if (!req.body.firma || !req.body.email || !req.body.password) {
+  if (!req.body.firma_id || !req.body.email || !req.body.password) {
     return next(new Error('Andmed on puudu!'));
   }
   const user = {};
   Object.keys(req.body).forEach((key) => {
     user[key] = req.body[key].trim();
   });
-  /*  enimi    TEXT (20),
-        pnimi    TEXT (30),
-        email    TEXT (30) NOT NULL UNIQUE,
-        firma    TEXT (30),
-        mob      INTEGER (30),
-        roll     TEXT (20) NOT NULL,
-        desc     TEXT (50),
-        password TEXT (100) NOT NULL,
-        pilt     TEXT (30),
-        jrk      INTEGER,
-        todate   NUMERIC (20)  */
-  // if (req.file) {
-  //   user.pilt = req.file.filename;
-  // }
+
+  // Vaikimisi väärtused, kui mõni väli puudub
+  user.mob = user.mob || null;
+  user.markus = user.jrk || null;
+  user.todate = user.todate || null;
+  user.pilt = user.pilt || null;
+
+  /*   
+  id,  int,  NULL
+  enimi,  nvarchar, 30
+  pnimi,  nvarchar, 30
+  email,  nvarchar, 30
+  mob,  nvarchar, 20
+  roll, nvarchar, 20
+  markus, nvarchar, 30
+  pilt, nvarchar, 40
+  todate, date, NULL
+  password, char, 60
+  firma_id, int,  NULL
+  asukoht_id, int,  NULL */
+
   try {
     // ootame kuni on kryptitud ja lisame arraysse
     // updateList.password = await bcrypt.hash();
@@ -64,8 +71,38 @@ const uusKasutaja = async (req, res, next) => {
     console.log('bcrypt error!');
     return next(error);
   }
+  try {
+    let pool = await sql.connect(sqlConfig);
+    let data = await pool
+      .request()
+      .input('enimi', sql.NVarChar, user.enimi)
+      .input('pnimi', sql.NVarChar, user.pnimi)
+      .input('email', sql.NVarChar, user.email)
+      .input('mob', sql.NVarChar, user.mob || null)
+      .input('roll', sql.NVarChar, user.roll)
+      .input('markus', sql.NVarChar, user.markus || null)
+      .input('pilt', sql.NVarChar, user.pilt || null)
+      .input('todate', sql.DateTime, user.todate || null)
+      .input('password', sql.DateTime, user.password)
+      .input('firma_id', sql.Int, user.firma_id || null)
+      .input('asukoht_id', sql.Int, user.asukoht_id || null)
 
-  return knex('users')
+      .query(
+        'INSERT INTO users(enimi, pnimi, email, mob, roll, markus, pilt, todate, password, firma_id, asukoht_id) VALUES (@enimi, @pnimi, @email, @mob, @roll, @markus, @pilt, @todate, @password, @firma_id, @asukoht_id)'
+      );
+    if (data.rowsAffected > 0) {
+      res.json({
+        status: true,
+        message: 'Uus kasutaja on lisatud!',
+      });
+    } else {
+      throw new Error('Kasutajat ei lisatud');
+    }
+  } catch (err) {
+    next(err);
+  }
+
+  /* return knex('users')
     .insert(user)
     .then(() => {
       res.json({
@@ -73,7 +110,7 @@ const uusKasutaja = async (req, res, next) => {
         message: 'Uus kasutaja on lisatud!',
       });
     })
-    .catch((err) => next(err));
+    .catch((err) => next(err)); */
 };
 
 /* -------------------------------------------------------------------------- */
@@ -114,6 +151,9 @@ const lisaPilt = async (req, res, next) => {
   if (!req.params.id) {
     return next(new Error('Kasutaja ID puudub!'));
   }
+  //tekitame andmebaasi ühenduse
+  const pool = await sql.connect(sqlConfig);
+  const request = pool.request();
 
   // 1) Laeme pildi üles serverisse
   const piltUpload = () =>
@@ -128,20 +168,34 @@ const lisaPilt = async (req, res, next) => {
     });
 
   // Otsime ID järgi kas on DB-s pilti
-  const otsiDbPildiName = async (id) =>
-    knex('users')
-      .select('pilt')
-      .where('id', id)
-      .then((rows) => {
-        if (rows.length > 0) {
-          return rows[0].pilt;
-        }
-        return null;
-      });
+  const otsiDbPildiName = async (id) => {
+    try {
+      request.input('id', sql.Int, id);
+      const result = await request.query(
+        'SELECT pilt FROM dbo.users WHERE id=@id'
+      );
+      if (result.length > 0) {
+        return result.recordset[0].pilt;
+      } else return null;
+    } catch (err) {
+      throw err;
+    }
+  };
 
   // Muudame andmebaasis faili nime
   const muudaDbFileName = async (id, pilt) => {
-    await knex('users').where('id', id).update('pilt', pilt);
+    try {
+      request.input('pilt', sql.NVarChar, pilt);
+      const result = await request.query(
+        'UPDATE dbo.users SET pilt=@pilt WHERE id=@id'
+      );
+      if (!(result.rowsAffected > 0)) {
+        throw new Error('Andmebaasi pilti ei muudetud!');
+      }
+    } catch (err) {
+      throw err;
+    }
+    //await knex('users').where('id', id).update('pilt', pilt);
   };
 
   const muudaPilt = async () => {
@@ -175,8 +229,8 @@ const lisaPilt = async (req, res, next) => {
         mess = 'Pilt on kustutatud!';
       }
       return res.status(200).send(mess);
-    } catch (error) {
-      return next(error);
+    } catch (err) {
+      return next(err);
     }
   };
   return muudaPilt();
@@ -190,9 +244,10 @@ const delPilt = async (req, res, next) => {
   if (!req.query.pilt) {
     return next(new Error('Pilt puudub!'));
   }
-  const otsiPilt = req.query.pilt;
-  // const otsiPilt = '1';
+  // const otsiPilt = req.query.pilt;
+  const otsiPilt = '1';
 
+  //Kustutame faili kataloogist
   const delFile = async () => {
     try {
       await fs.remove(`${pildiPath}${otsiPilt}`);
@@ -202,8 +257,7 @@ const delPilt = async (req, res, next) => {
       });
       // await delFile(`${pildiPath}${otsiPilt}`);
     } catch (error) {
-      console.log('Faili kustutamise error');
-      return next(error);
+      throw new Error(error);
     }
   };
 
@@ -213,27 +267,19 @@ const delPilt = async (req, res, next) => {
       const pool = await sql.connect(sqlConfig);
       const request = pool.request();
       request.input('pilt', sql.NVarChar, otsiPilt);
-      request.query(
-        'UPDATE dbo.users SET pilt=null WHERE pilt=@pilt',
-        (err, result) => {
-          if (err) {
-            console.log(err.message, 'sqli viga');
-            return next(err.message);
-          } else {
-            if (result.rowsAffected > 0) {
-              // if (result.rowsAffected) {
-              //Kui andmebaasit leidsime faili ja
-              //kustatsime siis kustuatme ka päris faili
-              delFile();
-            } else {
-              return next('Pilti ei kustatud.');
-            }
-          }
-        }
+      const result = await request.query(
+        'UPDATE dbo.users SET pilt=null WHERE pilt=@pilt'
       );
+      if (result.rowsAffected > 0) {
+        // if (result.rowsAffected) {
+        //Kui andmebaasit leidsime faili ja
+        //kustutasime siis kustutame ka päris faili
+        delFile();
+      } else {
+        throw new Error('DB-st pilti ei leitud!');
+      }
     } catch (err) {
-      console.log(err.message, 'msql ühnenduses viga');
-      return next(err.message);
+      next(err);
     }
   };
   return delDbPilt();
@@ -293,14 +339,17 @@ const muudameKasutajat = async (req, res, next) => {
 /* -------------------------------------------------------------------------- */
 /*                              Leiame asukohad                              */
 /* -------------------------------------------------------------------------- */
-const getAsukohad = (req, res, next) => {
-  return knex('asukoht')
-    .select('id', 'nimi')
-    .orderBy('id')
-    .then((rows) => {
-      res.status(200).json(rows);
-    })
-    .catch((err) => next(err));
+const getAsukohad = async (req, res, next) => {
+  try {
+    const pool = await sql.connect(sqlConfig);
+    const request = pool.request();
+    const result = await request.query(
+      'SELECT id, nimi FROM dbo.asukoht ORDER BY id'
+    );
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    next(err);
+  }
 };
 
 /* ------------------------------ Export module ----------------------------- */

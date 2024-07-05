@@ -447,7 +447,7 @@ const delPilt = async (req, res, next) => {
         message: 'Pilt on kustutatud!',
       });
     } catch (error) {
-      console.log('DEL ERROR');
+      console.error('DEL ERROR');
       return next(error);
     }
   };
@@ -461,7 +461,7 @@ const delPilt = async (req, res, next) => {
         'UPDATE dbo.tootajad SET pilt=null WHERE pilt=@pilt',
         (err, result) => {
           if (err) {
-            console.log(err.message, 'sqli viga');
+            console.error(err.message, 'sqli viga');
             return next(err.message);
           } else {
             if (result.rowsAffected > 0) {
@@ -476,7 +476,7 @@ const delPilt = async (req, res, next) => {
         }
       );
     } catch (err) {
-      console.log(err.message, 'msql ühnenduses viga');
+      console.error(err.message, 'msql ühnenduses viga');
       return next(err.message);
     }
   };

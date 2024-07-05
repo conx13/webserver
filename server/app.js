@@ -98,6 +98,7 @@ app.use(passport.session());
 app.get('/api/kama', (req, res) => {
   res.send('Tere tulemast HTTPS serverisse!');
 });
+
 app.use('/api/auth', login);
 app.use('/api/users', users);
 app.use('/api/test', test);
@@ -108,15 +109,8 @@ app.use('/api/kasutaja', kasutaja);
 /**
  * Error
  */
-app.use((err, res) => {
-  console.log(err.message, 'ERROR app.js');
-  return res.status(err.status || 500).send({
-    error: {
-      status: err.status || 500,
-      message: err.message || 'Päring on vale!',
-    },
-  });
-  //return res.sendStatus(500).json(err.message);
-  //return res.status(500).send(err.message);
+app.use((err, req, res, next) => {
+  console.error(err.message || err, 'ERROR!');
+  return res.status(err.status || 500).send(err.message || 'Päring on vale!');
 });
 module.exports = app;
