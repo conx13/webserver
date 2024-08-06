@@ -6,9 +6,12 @@ const router = require('express').Router();
 /**
  *Module dependencies
  */
-
+const path = require('path');
 const usersCont = require('../controllers/userCont');
 const abiks = require('../utils/utils');
+const upload = require('../utils/upload');
+
+const pildiPath = path.join(__dirname, '../public/pildid/userPics/');
 
 /**
  *Module Variables
@@ -50,7 +53,7 @@ router.get('/', (req, res, next) => allUsers(req, res, next));
 //   :::::: U U S   TÖÖTAJA : :  :   :    :     :        :          :
 // ──────────────────────────────────────────────────────────────────────────
 //
-router.post('/register', (req, res, next) => newuser(req, res, next));
+router.post('/', (req, res, next) => newuser(req, res, next));
 // ────────────────────────────────────────────────────────────────────────────────
 
 //
@@ -58,7 +61,7 @@ router.post('/register', (req, res, next) => newuser(req, res, next));
 //   :::::: M U U D A   TÖÖTAJAT : :  :   :    :     :        :          :
 // ────────────────────────────────────────────────────────────────────────────────
 //
-router.put('/edit/:tid', (req, res, next) => edituser(req, res, next));
+router.put('/:tid', (req, res, next) => edituser(req, res, next));
 // ────────────────────────────────────────────────────────────────────────────────
 
 /* -------------------------------------------------------------------------- */
@@ -157,7 +160,9 @@ router.delete('/delpic/:pilt', (req, res, next) => delPilt(req, res, next));
 //   :::::: L I S A M E   M U U D A M E   P I L T I : :  :   :    :     :        :          :
 // ──────────────────────────────────────────────────────────────────────────────────────────
 //
-router.post('/editpic/:id', (req, res, next) => lisaPilt(req, res, next));
+router.post('/editpic/:id', upload(pildiPath), (req, res, next) =>
+  lisaPilt(req, res, next)
+);
 // ────────────────────────────────────────────────────────────────────────────────
 //
 // ────────────────────────────────────────────────────────────── I ──────────

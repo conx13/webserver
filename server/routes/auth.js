@@ -1,17 +1,20 @@
 /**
-*Create router instance
-*/
+ *Create router instance
+ */
 const router = require('express').Router();
 
 /**
-*Module dependencies
-*/
+ *Module dependencies
+ */
 const abiks = require('../utils/utils');
+const fs = require('fs');
 
 /**
-*Module Variables
-*/
+ *Module Variables
+ */
 const passport = require('../config/passport');
+
+const { app } = require('../config/config');
 
 const { isLoggedIn } = abiks;
 
@@ -29,7 +32,9 @@ router.post('/login', (req, res, next) => {
         message: info.message,
       });
     }
-    if (err) { return next(err); }
+    if (err) {
+      return next(err);
+    }
     if (!user) {
       return res.status(500).send({
         status: false,
@@ -37,7 +42,9 @@ router.post('/login', (req, res, next) => {
       });
     }
     return req.login(user, (error) => {
-      if (error) { return next(err); }
+      if (error) {
+        return next(err);
+      }
       return res.status(200).send({
         status: true,
         user,
@@ -49,7 +56,7 @@ router.post('/login', (req, res, next) => {
 /* -------------------------------------------------------------------------- */
 /*                               Kas on loginud                               */
 /* -------------------------------------------------------------------------- */
-router.get('/authstatus', isLoggedIn, (req, res) => {
+router.get('/authstatus', isLoggedIn, (req, res, next) => {
   const { user } = req;
   return res.status(200).send({
     status: true,
@@ -59,16 +66,33 @@ router.get('/authstatus', isLoggedIn, (req, res) => {
 /* -------------------------------------------------------------------------- */
 /*                                   Logout                                   */
 /* -------------------------------------------------------------------------- */
-router.get('/logout', (req, res) => {
-  req.logout();
-  req.session.destroy();
+router.get('/logout', (req, res, next) => {
+  console.log('LOGOUT');
+  req.logout((err) => {
+    if (err) {
+      return next(err);
+    }
+    req.session.destroy((error) => {
+      if (error) {
+        return next(error);
+      }
+      return res.status(200).send({
+        status: true,
+        message: 'Kasutaja on välja logitud!',
+      });
+    });
+  });
+});
+
+router.get('/config/ootelid', (req, res, next) => {
+  const ootelid = app.tooOotel;
   return res.status(200).send({
     status: true,
-    message: 'Kasutaja on välja logitud!',
+    ootelid,
   });
 });
 
 /**
-*Export Module
-*/
+ *Export Module
+ */
 module.exports = router;

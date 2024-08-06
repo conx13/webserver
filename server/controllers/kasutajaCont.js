@@ -1,12 +1,10 @@
 const bcrypt = require('bcrypt');
-const knex = require('../config/knex');
 const sqlConfig = require('../config/mssql');
 const sql = require('mssql');
 const path = require('path');
 const fs = require('fs-extra');
 const abiks = require('../utils/utils');
 const multer = require('multer');
-const { log, error } = require('console');
 
 const saltRounds = 10;
 const { resizePilt } = abiks;
@@ -31,87 +29,161 @@ const storage = multer.diskStorage({
 const upload = multer({ storage }).single('pilt');
 
 /* -------------------------------------------------------------------------- */
+/*                 Function to validate and prepare updateList                */
+/* -------------------------------------------------------------------------- */
+//kasutame uue kasutaja muutmisel ja lisamisel
+const prepareUpdateList = async (body) => {
+  const updateList = {};
+
+  // Iterate over the properties of the body object
+  for (const key in body) {
+    // Check if the property is not empty or null
+    if (body[key] !== '' && body[key] !== null) {
+      // Add the property to the updateList object
+      updateList[key] = body[key];
+    }
+  }
+
+  // Validate and prepare todate property
+  if (updateList.todate) {
+    try {
+      updateList.todate = new Date(updateList.todate);
+    } catch (error) {
+      throw new Error('Invalid date format for todate');
+    }
+  }
+
+  // Validate and prepare password property
+  if (updateList.password) {
+    try {
+      updateList.password = await bcrypt.hash(
+        updateList.password.trim(),
+        saltRounds
+      );
+    } catch (error) {
+      console.log('bcrypt error!');
+      throw new Error('Error hashing password');
+    }
+  }
+  return updateList;
+};
+
+/* -------------------------------------------------------------------------- */
+/*               Function to get the SQL type based on the value              */
+/* -------------------------------------------------------------------------- */
+//kasutame sqlType leidmisel
+const getSqlType = (value) => {
+  if (typeof value === 'string') {
+    return sql.NVarChar;
+  } else if (typeof value === 'number') {
+    return sql.Int;
+  } else if (value instanceof Date) {
+    return sql.DateTime;
+  } else {
+    throw new Error('Unsupported value type');
+  }
+};
+
+/* -------------------------------------------------------------------------- */
 /*                             Lisame uue kasutaja                            */
 /* -------------------------------------------------------------------------- */
 
 const uusKasutaja = async (req, res, next) => {
-  console.log(req.body, 'REQ body');
-  if (!req.body.firma_id || !req.body.email || !req.body.password) {
+  if (
+    !req.body.firma_id ||
+    !req.body.email ||
+    !req.body.password ||
+    !req.body.enimi ||
+    !req.body.pnimi
+  ) {
     return next(new Error('Andmed on puudu!'));
   }
-  const user = {};
-  Object.keys(req.body).forEach((key) => {
-    user[key] = req.body[key].trim();
-  });
-
-  // Vaikimisi väärtused, kui mõni väli puudub
-  user.mob = user.mob || null;
-  user.markus = user.jrk || null;
-  user.todate = user.todate || null;
-  user.pilt = user.pilt || null;
-
-  /*
-  id,  int,  NULL
-  enimi,  nvarchar, 30
-  pnimi,  nvarchar, 30
-  email,  nvarchar, 30
-  mob,  nvarchar, 20
-  roll, nvarchar, 20
-  markus, nvarchar, 30
-  pilt, nvarchar, 40
-  todate, date, NULL
-  password, char, 60
-  firma_id, int,  NULL
-  asukoht_id, int,  NULL */
 
   try {
-    // ootame kuni on kryptitud ja lisame arraysse
-    // updateList.password = await bcrypt.hash();
-    user.password = await bcrypt.hash(user.password.trim(), saltRounds);
-  } catch (error) {
-    console.log('bcrypt error!');
-    return next(error);
-  }
-  try {
-    let pool = await sql.connect(sqlConfig);
-    let data = await pool
-      .request()
-      .input('enimi', sql.NVarChar, user.enimi)
-      .input('pnimi', sql.NVarChar, user.pnimi)
-      .input('email', sql.NVarChar, user.email)
-      .input('mob', sql.NVarChar, user.mob || null)
-      .input('roll', sql.NVarChar, user.roll)
-      .input('markus', sql.NVarChar, user.markus || null)
-      .input('pilt', sql.NVarChar, user.pilt || null)
-      .input('todate', sql.DateTime, user.todate || null)
-      .input('password', sql.NVarChar, user.password)
-      .input('firma_id', sql.Int, user.firma_id || null)
-      .input('asukoht_id', sql.Int, user.asukoht_id || null)
+    //kasutame abivalemid üleval prepareUpdateList ja getSqlType
+    const user = await prepareUpdateList(req.body);
+    const inputs = [];
+    Object.keys(user).forEach((key) => {
+      inputs.push({
+        name: key,
+        type: getSqlType(user[key]),
+        value: user[key],
+      });
+    });
 
-      .query(
-        'INSERT INTO users(enimi, pnimi, email, mob, roll, markus, pilt, todate, password, firma_id, asukoht_id) VALUES (@enimi, @pnimi, @email, @mob, @roll, @markus, @pilt, @todate, @password, @firma_id, @asukoht_id)'
-      );
-    if (data.rowsAffected > 0) {
-      res.json({
+    const query = `INSERT INTO users(${inputs
+      .map((input) => input.name)
+      .join(', ')}) VALUES (${inputs
+      .map((input) => `@${input.name}`)
+      .join(', ')})`;
+
+    // Execute SQL query
+    const pool = await sql.connect(sqlConfig);
+    const request = pool.request();
+    inputs.forEach((input) =>
+      request.input(input.name, input.type, input.value)
+    );
+    const result = await request.query(query);
+    if (result.rowsAffected > 0) {
+      res.status(200).json({
         status: true,
-        message: 'Uus kasutaja on lisatud!',
+        message: 'Uus kasutaja on listaud!',
       });
     } else {
-      throw new Error('Kasutajat ei lisatud');
+      throw new Error('Uut kasutajat ei lisatud!');
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+/* -------------------------------------------------------------------------- */
+/*                              Muudame kasutajat                             */
+/* -------------------------------------------------------------------------- */
+
+//put('/:id')
+const muudameKasutajat = async (req, res, next) => {
+  if (!req.params.id) {
+    console.log('ID puudu');
+    return next(new Error('Id on puudu'));
+  }
+
+  try {
+    //kasutame abivalemid üleval prepareUpdateList ja getSqlType
+    const updateList = await prepareUpdateList(req.body);
+    // Prepare SQL query inputs
+    const inputs = [];
+    Object.keys(updateList).forEach((key) => {
+      inputs.push({
+        name: key,
+        type: getSqlType(updateList[key]),
+        value: updateList[key],
+      });
+    });
+    // Prepare SQL query
+    const query = `UPDATE dbo.users SET ${inputs
+      .map((input) => `${input.name} = @${input.name}`)
+      .join(', ')} WHERE id = @id`;
+
+    // Execute SQL query
+    const pool = await sql.connect(sqlConfig);
+    const request = pool.request();
+    inputs.forEach((input) =>
+      request.input(input.name, input.type, input.value)
+    );
+    request.input('id', sql.Int, req.params.id);
+    const result = await request.query(query);
+    console.log(result, 'Result:');
+    if (result.rowsAffected > 0) {
+      res.status(200).json({
+        status: true,
+        message: 'Kasutaja andmed on muudetud!',
+      });
+    } else {
+      throw new Error('Kasutaja andmed ei muudetud!');
     }
   } catch (err) {
     next(err);
   }
-
-  /* return knex('users')
-    .insert(user)
-    .then(() => {
-      res.json({
-        status: true,
-        message: 'Uus kasutaja on lisatud!',
-      });
-    })
-    .catch((err) => next(err)); */
 };
 
 /* -------------------------------------------------------------------------- */
@@ -284,57 +356,6 @@ const delPilt = async (req, res, next) => {
     }
   };
   return delDbPilt();
-};
-
-/* -------------------------------------------------------------------------- */
-/*                              Muudame kasutajat                             */
-/* -------------------------------------------------------------------------- */
-//put('/:id')
-const muudameKasutajat = async (req, res, next) => {
-  if (!req.params.id) {
-    console.log('ID puudu');
-    return next(new Error('Id on puudu'));
-  }
-  const updateList = req.body;
-  // Tekitame kogu bodys array
-  /*   console.log(req.body, "req.body");
-  Object.keys(req.body).forEach((key) => {
-    updateList[key] = req.body[key];
-  }); */
-  // Kui on parool, siis krüptime ära
-  if (updateList.todate) {
-    try {
-      updateList.todate = new Date(updateList.todate);
-    } catch (error) {
-      console.log('kpv formaat vale');
-      return next(error);
-    }
-  }
-  if (updateList.password) {
-    try {
-      // ootame kuni on kryptitud ja lisame arraysse
-      // updateList.password = await bcrypt.hash();
-      updateList.password = await bcrypt.hash(
-        updateList.password.trim(),
-        saltRounds
-      );
-    } catch (error) {
-      console.log('bcryp error!');
-      return next(error);
-    }
-  }
-  console.log(updateList, 'LIST');
-  knex('users')
-    .where('id', req.params.id)
-    .update(updateList)
-    .then(() => {
-      res.status(200).json({
-        status: true,
-        message: 'Kasutaja andmed on muudetud!',
-      });
-    })
-    .catch((err) => next(err));
-  return null;
 };
 
 /* -------------------------------------------------------------------------- */

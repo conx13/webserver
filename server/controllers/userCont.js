@@ -8,26 +8,10 @@ const fs = require('fs-extra');
 const path = require('path');
 const sql = require('mssql');
 
-//validator:
-const { check, validationResult } = require('express-validator');
-
 const abiks = require('../utils/utils');
 const knex = require('../config/knex');
 
-const sqlConfig = {
-  user: 'Hillar',
-  password: 'conx13',
-  database: 'Ribakood',
-  server: '10.0.30.2',
-  options: {
-    encrypt: false, // Disable SSL/TLS
-  },
-  pool: {
-    max: 10,
-    min: 0,
-    idleTimeoutMillis: 30000,
-  },
-};
+const sqlConfig = require('../config/mssql');
 
 // paneme paika piltide asukoha
 const pildiPath = path.join(__dirname, '../public/pildid/userPics/');
@@ -47,135 +31,248 @@ const storage = multer.diskStorage({
 // laeme pildi üles, eelnimetatud kausta ja nimega
 const upload = multer({ storage }).single('pilt');
 
-// const passport = require('../config/passport');
-
 /**
  *Module Variables
  */
 const saltRounds = 10;
 const { resizePilt } = abiks;
+let pool;
 
-//
-// ──────────────────────────────────────────────────────────────────────────── I ──────────
-//   :::::: L O O M E   U U E   K A S U T A J A : :  :   :    :     :        :          :
-// ──────────────────────────────────────────────────────────────────────────────────────
-//
-const newuser = async (req, res, next) => {
-  if (!req.body.firma || !req.body.email || !req.body.password) {
-    return next(new Error('Andmed on puudu!'));
-  }
-  const user = {};
-  Object.keys(req.body).forEach((key) => {
-    user[key] = req.body[key].trim();
-  });
-  /*  enimi    TEXT (20),
-      pnimi    TEXT (30),
-      email    TEXT (30) NOT NULL UNIQUE,
-      firma    TEXT (30),
-      mob      INTEGER (30),
-      roll     TEXT (20) NOT NULL,
-      desc     TEXT (50),
-      password TEXT (100) NOT NULL,
-      pilt     TEXT (30),
-      jrk      INTEGER,
-      todate   NUMERIC (20)  */
-  // if (req.file) {
-  //   user.pilt = req.file.filename;
-  // }
+// Ühenduspooli loomine
+async function connectToPool() {
   try {
-    // ootame kuni on kryptitud ja lisame arraysse
-    // updateList.password = await bcrypt.hash();
-    user.password = await bcrypt.hash(user.password.trim(), saltRounds);
+    if (!pool) {
+      pool = await sql.connect(sqlConfig);
+
+      console.log('ei ole rquesti');
+    } else {
+      console.log('on rquest');
+    }
   } catch (error) {
-    console.log('bcrypt error!');
-    return next(error);
+    throw new Error(error);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                 Function to validate and prepare updateList                */
+/* -------------------------------------------------------------------------- */
+//kasutame uue kasutaja muutmisel ja lisamisel
+const prepareUpdateList = async (body) => {
+  const updateList = {};
+
+  // Iterate over the properties of the body object
+  for (const key in body) {
+    // Check if the property is not empty or null
+    if (body[key] !== '' && body[key] !== null) {
+      // Add the property to the updateList object
+      updateList[key] = body[key];
+    }
   }
 
-  return knex('users')
-    .insert(user)
-    .then(() => {
-      res.json({
-        status: true,
-        message: 'Uus kasutaja on lisatud!',
-      });
-    })
-    .catch((err) => next(err));
-};
-// ────────────────────────────────────────────────────────────────────────────────
-
-//
-// ────────────────────────────────────────────────────────────────────────── I ──────────
-//   :::::: M U U D A M E   TÖÖTAJAT: :  :   :    :     :        :          :
-// ────────────────────────────────────────────────────────────────────────────────────
-//put('/edit/:id')
-/* Et selleks et saada teada, kas email on olemas, teen async funktsiooni */
-const edituser = async (req, res, next) => {
-  if (!req.params.tid) {
-    console.log('ID puudu');
-    return next(new Error('Id on puudu'));
-  }
-  const updateList = req.body;
-  // Tekitame kogu bodys array
-  /*   console.log(req.body, "req.body");
-  Object.keys(req.body).forEach((key) => {
-    updateList[key] = req.body[key];
-  }); */
-  // Kui on parool, siis krüptime ära
+  // Validate and prepare todate property
   if (updateList.todate) {
     try {
       updateList.todate = new Date(updateList.todate);
     } catch (error) {
-      console.log('kpv formaat vale');
-      return next(error);
+      throw new Error('Invalid date format for todate');
     }
   }
+
+  // Validate and prepare password property
   if (updateList.password) {
     try {
-      // ootame kuni on kryptitud ja lisame arraysse
-      // updateList.password = await bcrypt.hash();
       updateList.password = await bcrypt.hash(
         updateList.password.trim(),
         saltRounds
       );
     } catch (error) {
-      console.log('bcryp error!');
-      return next(error);
+      console.log('bcrypt error!');
+      throw new Error('Error hashing password');
     }
   }
-  console.log(updateList, 'LIST');
-  knex('tootajad')
-    .where('tid', req.params.tid)
-    .update(updateList)
-    .then(() => {
+  return updateList;
+};
+
+/* -------------------------------------------------------------------------- */
+/*               Function to get the SQL type based on the value              */
+/* -------------------------------------------------------------------------- */
+//kasutame sqlType leidmisel
+const getSqlType = (value) => {
+  if (typeof value === 'string') {
+    return sql.NVarChar;
+  } else if (typeof value === 'number') {
+    return sql.Int;
+  } else if (value instanceof Date) {
+    return sql.DateTime;
+  } else {
+    throw new Error('Unsupported value type');
+  }
+};
+/* -------------------------------------------------------------------------- */
+/*                Function teha kindlaks õige kuupäeva formaat                */
+/* -------------------------------------------------------------------------- */
+function isValidDate(dateString) {
+  const dateRegex = /^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}$/;
+  return dateRegex.test(dateString);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              Loome uue töötaja                             */
+/* -------------------------------------------------------------------------- */
+//POST /api/users
+/**
+ * @api {post} /api/users Lisa uus töötaja
+ *
+ * @apiParam {String} enimi Töötaja eesnimi.
+ * @apiParam {String} pnimi Töötaja perekonnanimi.
+ * @apiParam {String} ikood Töötaja isikukood.
+ * @apiParam {Number} ajagupp Töötaja ajagrupi ID.
+ * @apiParam {Boolean} aktiivne Kas töötaja on aktiivne.
+ * @apiParam {Number} toogrupp_id Töötaja töögrupi ID.
+ * @apiParam {Number} firma_id Töötaja firma ID.
+ * @apiParam {Number} asukoht_id Töötaja asukoha ID.
+ *
+ * @apiSuccess {Boolean} response.status True if the operation was successful.
+ * @apiSuccess {String} response.message Message indicating the result of the operation.
+ *
+ */
+const newuser = async (req, res, next) => {
+  if (
+    !req.body.enimi ||
+    !req.body.pnimi ||
+    !req.body.ikood ||
+    !req.body.ajagupp ||
+    !req.body.aktiivne ||
+    !req.body.toogrupp_id ||
+    !req.body.firma_id ||
+    !req.body.asukoht_id
+  ) {
+    return next(new Error('Andmed on puudu!'));
+  }
+  try {
+    //kasutame abivalemid üleval prepareUpdateList ja getSqlType
+    const user = await prepareUpdateList(req.body);
+    const inputs = [];
+    Object.keys(user).forEach((key) => {
+      inputs.push({
+        name: key,
+        type: getSqlType(user[key]),
+        value: user[key],
+      });
+    });
+
+    const query = `INSERT INTO tootajad(${inputs
+      .map((input) => input.name)
+      .join(', ')}) VALUES (${inputs
+      .map((input) => `@${input.name}`)
+      .join(', ')})`;
+
+    // Execute SQL query
+    await connectToPool();
+    const request = pool.request();
+    inputs.forEach((input) =>
+      request.input(input.name, input.type, input.value)
+    );
+    const result = await request.query(query);
+    if (result.rowsAffected > 0) {
+      res.status(200).json({
+        status: true,
+        message: 'Uus töötaja on lisatud!',
+      });
+    } else {
+      throw new Error('Uut töötajat ei lisatud!');
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+/* -------------------------------------------------------------------------- */
+/*                              Muudame töötajat                              */
+/* -------------------------------------------------------------------------- */
+//put('api/users/:id')
+const edituser = async (req, res, next) => {
+  if (!req.params.tid) {
+    return next(new Error('Tid on puudu'));
+  }
+  try {
+    //kasutame abivalemid üleval prepareUpdateList ja getSqlType
+    const updateList = await prepareUpdateList(req.body);
+    // Prepare SQL query inputs
+    const inputs = [];
+    Object.keys(updateList).forEach((key) => {
+      inputs.push({
+        name: key,
+        type: getSqlType(updateList[key]),
+        value: updateList[key],
+      });
+    });
+
+    // Prepare SQL query
+    const query = `UPDATE dbo.tootajad SET ${inputs
+      .map((input) => `${input.name} = @${input.name}`)
+      .join(', ')} WHERE tid = @tid`;
+
+    // Execute SQL query
+    await connectToPool();
+    const request = pool.request();
+    inputs.forEach((input) =>
+      request.input(input.name, input.type, input.value)
+    );
+    request.input('tid', sql.Int, req.params.tid);
+    await connectToPool();
+    const result = await request.query(query);
+
+    if (result.rowsAffected > 0) {
       res.status(200).json({
         status: true,
         message: 'Töötaja andmed on muudetud!',
       });
-    })
-    .catch((err) => next(err));
-  return null;
+    } else {
+      throw new Error('Töötaja andmed ei muudetud!');
+    }
+  } catch (err) {
+    next(err);
+  }
 };
-// ────────────────────────────────────────────────────────────────────────────────
-//
-// ────────────────────────────────────────────────────────────────────────── I ──────────
-//   :::::: N A I T A M E   TÖÖTAJAT: :  :   :    :     :        :          :
-// ────────────────────────────────────────────────────────────────────────────────────
-//get('/user/:tid')
-
+/* -------------------------------------------------------------------------- */
+/*                              Näitame töötajat                              */
+/* -------------------------------------------------------------------------- */
+/**
+ * @api {get} /api/users/:tid Töötaja andmed
+ *
+ * @apiParam {Number} tid Töötaja ID.
+ *
+ * @apiSuccess {Object} recordset Object containing information about the employee.
+ * @apiSuccess {String} recordset.ENIMI Employee's first name.
+ * @apiSuccess {String} recordset.PNIMI Employee's last name.
+ * @apiSuccess {Number} recordset.TID Employee's ID.
+ * @apiSuccess {String} recordset.IKOOD Employee's personal code.
+ * @apiSuccess {Number} recordset.AJAGUPP Employee's work time group ID.
+ * @apiSuccess {Boolean} recordset.Aktiivne Employee's active status.
+ * @apiSuccess {Number} recordset.toogrupp_id Employee's work group ID.
+ * @apiSuccess {String} recordset.telefon Employee's phone number.
+ * @apiSuccess {String} recordset.toogrupp_nimi Name of the employee's work group.
+ * @apiSuccess {String} recordset.Ajanimi Name of the employee's work time group.
+ * @apiSuccess {String} recordset.pilt Employee's picture file name.
+ * @apiSuccess {String} recordset.email Employee's email address.
+ * @apiSuccess {String} recordset.firma Name of the employee's company.
+ * @apiSuccess {Number} recordset.firma_id ID of the employee's company.
+ * @apiSuccess {String} recordset.asukoht Name of the employee's location.
+ * @apiSuccess {Number} recordset.asukoht_id ID of the employee's location.
+ *
+ */
 const tootaja = async (req, res, next) => {
   if (!req.params.tid) {
-    console.log('Kasutaja ID puududb!');
     return next(new Error('Kasutaja ID puududb!'));
   }
   try {
-    let pool = await sql.connect(sqlConfig);
-    let data = await pool
-      .request()
-      .input('tid', sql.NVarChar, req.params.tid)
-      .query(
-        'select * from w_rk_tootjad_lyh with (noexpand) where tid = @tid '
-      );
-    res.json(data.recordset);
+    await connectToPool();
+    const request = pool.request();
+    request.input('tid', sql.NVarChar, req.params.tid);
+    const query =
+      'SELECT dbo.TOOTAJAD.ENIMI, dbo.TOOTAJAD.PNIMI, dbo.TOOTAJAD.TID, dbo.TOOTAJAD.IKOOD, dbo.TOOTAJAD.AJAGUPP, dbo.TOOTAJAD.Aktiivne, dbo.TOOTAJAD.toogrupp_id, dbo.TOOTAJAD.telefon, dbo.toogrupp.toogrupp_nimi, dbo.AJAD.Nimi AS Ajanimi, dbo.TOOTAJAD.pilt, dbo.TOOTAJAD.email, dbo.firmagrupp.nimi AS firma, dbo.firmagrupp.fgid AS firma_id, dbo.asukoht.nimi AS asukoht, dbo.asukoht.id AS asukoht_id FROM dbo.TOOTAJAD INNER JOIN dbo.toogrupp ON dbo.TOOTAJAD.toogrupp_id = dbo.toogrupp.toogrupp_id INNER JOIN dbo.AJAD ON dbo.TOOTAJAD.AJAGUPP = dbo.AJAD.AID INNER JOIN dbo.firmagrupp ON dbo.TOOTAJAD.firma_id = dbo.firmagrupp.fgid INNER JOIN dbo.asukoht ON dbo.TOOTAJAD.asukoht_id = dbo.asukoht.id WHERE TID = @tid';
+    const result = await request.query(query);
+    res.json(result.recordset);
   } catch (err) {
     return next(new Error(err));
   }
@@ -184,126 +281,188 @@ const tootaja = async (req, res, next) => {
 /*                        Kõik tööaja grupidde list                           */
 /* -------------------------------------------------------------------------- */
 
-const tootajaAjaGrupp = (req, res, next) => {
-  //console.log('Tootaja toogrupp');
-  knex
-    .select(
-      'aid as id',
-      'nimi',
-      knex.raw("'Lõuna ' + Llopp +'-'+ Lalgus as markus")
-    )
-    //.select("aid as id", "nimi", knex.raw("Test:" + "Lalgus"))
-    .from('ajad')
-    .orderBy('nimi')
-    .then((rows) => {
-      res.status(200).json(rows);
-    })
-    .catch((err) => next(err));
+const tootajaAjaGrupp = async (req, res, next) => {
+  /**
+   * @api {get} /api/users/ajagrupp Kõik tööaja grupidde list
+   *
+   * @apiSuccess {Object[]} recordset Array of objects containing information about work time groups.
+   * @apiSuccess {Number} recordset.id ID of the work time group.
+   * @apiSuccess {String} recordset.nimi Name of the work time group.
+   * @apiSuccess {String} recordset.markus Description of the work time group, including lunch break times.
+   */
+  try {
+    await connectToPool();
+    const request = pool.request();
+    const query =
+      "SELECT AID AS id, nimi, 'Lõuna ' + Llopp + '-' + Lalgus AS markus FROM AJAD";
+    const result = await request.query(query);
+    res.status(200).json(result.recordset);
+  } catch (error) {
+    next(error);
+  }
 };
 
 /* -------------------------------------------------------------------------- */
 /*                             Töötaja aja grupid                             */
 /* -------------------------------------------------------------------------- */
-const tootajaTooGrupp = (req, res, next) => {
-  knex
-    .select('toogrupp_id as id', 'toogrupp_nimi as nimi')
-    .from('toogrupp')
-    .orderBy('toogrupp_nimi')
-    .then((rows) => res.status(200).json(rows))
-    .catch((err) => next(err));
+/**
+ * @api {get} /api/users/toogrupp Kõik töötajate töögruppide list
+ *
+ * @apiSuccess {Object[]} recordset Array of objects containing information about work groups.
+ * @apiSuccess {Number} recordset.id ID of the work group.
+ * @apiSuccess {String} recordset.nimi Name of the work group.
+ */
+const tootajaTooGrupp = async (req, res, next) => {
+  try {
+    await connectToPool();
+    const request = pool.request();
+    const query =
+      'SELECT toogrupp_id as id, toogrupp_nimi as nimi FROM toogrupp ORDER BY toogrupp_nimi';
+    const result = await request.query(query);
+    res.status(200).json(result.recordset);
+  } catch (error) {
+    next(error);
+  }
 };
 /* -------------------------------------------------------------------------- */
 /*                               Töötaja asukoht                              */
 /* -------------------------------------------------------------------------- */
-const tootajaAsukoht = (req, res, next) => {
-  knex
-    .select('id', 'nimi')
-    .from('asukoht')
-    .orderBy('nimi')
-    .then((rows) => res.status(200).json(rows))
-    .catch((err) => next(err));
+const tootajaAsukoht = async (req, res, next) => {
+  /**
+   * @api {get} /api/users/asukoht Kõik töötajate asukohtade list
+   *
+   * @apiSuccess {Number} recordset.id ID of the location.
+   * @apiSuccess {String} recordset.nimi Name of the location.
+   */
+  try {
+    await connectToPool();
+    const request = pool.request();
+    const query = 'SELECT id, nimi FROM dbo.asukoht ORDER BY nimi';
+    const result = await request.query(query);
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    next(err);
+  }
 };
 
 /* -------------------------------------------------------------------------- */
 /*                                Töötaja firma                               */
 /* -------------------------------------------------------------------------- */
-const tootajaFirmad = (req, res, next) => {
-  knex
-    .select('fgid as id', 'nimi')
-    .from('firmagrupp')
-    .orderBy('nimi')
-    .then((rows) => res.status(200).json(rows))
-    .catch((err) => next(err));
+const tootajaFirmad = async (req, res, next) => {
+  /**
+   * @api {get} /api/users/firmad Kõik töötajate firmade list
+   *
+   * @apiSuccess {Number} recordset.id ID of the company.
+   * @apiSuccess {String} recordset.nimi Name of the company.
+   */
+  try {
+    await connectToPool();
+    const request = pool.request();
+    const query = 'SELECT fgid as id, nimi FROM dbo.firmagrupp ORDER BY nimi';
+    const result = await request.query(query);
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    next(err);
+  }
 };
 /* -------------------------------------------------------------------------- */
 /*                         Otsime viimati aktiivse aja                        */
 /* -------------------------------------------------------------------------- */
-const viimatiAktiivne = (req, res, next) => {
-  return knex('result')
-    .first('start')
-    .where('tid', req.params.tid)
-    .orderBy('start', 'desc')
-    .then((rows) => res.status(200).json(rows))
-    .catch((err) => next(err));
+const viimatiAktiivne = async (req, res, next) => {
+  /**
+   * @api {get} /api/users/viimatiakt/:tid Viimati aktiivse töö info
+   *
+   * @apiParam {Number} tid Töötaja ID.
+   *
+   * @apiSuccess {String} recordset.start Start time of the last active work.
+   * @apiSuccess {Number} recordset.rid ID of the last active work.
+   * @apiSuccess {Number} recordset.jid ID of the job of the last active work.
+   */
+  try {
+    const request = pool.request();
+    request.input('tid', sql.Int, req.params.tid);
+    const query =
+      'SELECT TOP 1 start, rid, jid FROM RESULT WHERE tid=@tid ORDER BY start DESC';
+    await connectToPool();
+    const result = await request.query(query);
+    res.status(200).json(result.recordset[0]);
+  } catch (error) {
+    next(error);
+  }
 };
 
 /* -------------------------------------------------------------------------- */
 /*                           Töötaja ajagrupid kõik                           */
 /* -------------------------------------------------------------------------- */
-const tooAjaGrupp = (req, res, next) => {
-  return knex('ajad')
-    .first('Tooalgus', 'Toolopp', 'Lalgus', 'Llopp')
-    .innerJoin('tootajad', 'ajad.aid', 'tootajad.ajagupp')
-    .where('tootajad.tid', req.params.tid)
-    .then((rows) => res.status(200).json(rows))
-    .catch((err) => next(err));
+const tooAjaGrupp = async (req, res, next) => {
+  /**
+   * @api {get} /api/users/tootaja/ajagrupp/:tid Töötaja ajagrupi info
+   *
+   * @apiParam {Number} tid Töötaja ID.
+   *
+   * @apiSuccess {String} recordset.Tooalgus Start time of the work day.
+   * @apiSuccess {String} recordset.Toolopp End time of the work day.
+   * @apiSuccess {String} recordset.Lalgus Start time of the lunch break.
+   * @apiSuccess {String} recordset.Llopp End time of the lunch break.
+   */
+  try {
+    request.input('tid', sql.Int, req.params.tid);
+    const query =
+      'SELECT TOP 1 Tooalgus, Toolopp, Lalgus, Llopp FROM AJAD INNER JOIN tootajad ON ajad.aid = tootajad.ajagupp WHERE tootajad.tid=@tid';
+    await connectToPool();
+    const request = pool.request();
+    const result = await request.query(query);
+    res.status(200).json(result.recordset[0]);
+  } catch (error) {
+    next(error);
+  }
 };
 
 /* -------------------------------------------------------------------------- */
 /*                      Lõpetame töötaja olemasoleva töö                      */
 /* -------------------------------------------------------------------------- */
-/*
-rid
-stop
-result
-*/
+/**
+ * @api {put} /api/users/too/:rid Lõpeta töötaja töö
+ *
+ * @apiParam {Number} rid Töö ID.
+ *
+ * @apiParam {String} stop Lõpp aeg formaadis YYYY-MM-DD HH:MM.
+ * @apiParam {Number} result Töö tulemus (0 - ei tehtud, 1 - tehtud).
+ *
+ * @apiSuccess {Boolean} response.status True if the operation was successful.
+ * @apiSuccess {String} response.message Message indicating the result of the operation.
+ *
+ */
 const tooLopp = async (req, res, next) => {
-  // Define validation rules
-  const validationRules = [
-    check('stop')
-      .notEmpty()
-      .withMessage('Stop on tyhi')
-      .custom((value) => {
-        const regex = /^\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}(?::\d{2})?$/;
-        if (!regex.test(value)) {
-          throw new Error('Stop peab olema YYYY-MM-DD[T ]HH:MM');
-        }
-        return true;
-      }),
-    check('result')
-      .notEmpty()
-      .withMessage('Result on tyhi')
-      .isNumeric()
-      .withMessage('Result peab olema nr!'),
-  ];
-  // Validate the request body
-  await Promise.all(validationRules.map((rule) => rule.run(req)));
-  const errors = validationResult(req);
-  //Kui ei ole errorit
-  if (!errors.isEmpty()) {
-    console.error(errors.array(), 'Töö lõpp ERROR');
-    const errorMessages = errors.array().map((error) => error.msg);
-    return res.status(400).json(errorMessages);
+  if (!req.body.stop || !req.body.result || !req.params.rid) {
+    return next(new Error('Andmed on puudu!'));
+  }
+  // Validate date format
+  if (!isValidDate(req.body.stop)) {
+    console.log(req.body.stop, 'STOP');
+    return next(new Error('Stop peab olema YYYY-MM-DD HH:MM'));
   }
   try {
-    await knex('result')
-      .where({ rid: req.params.rid })
-      .update({
-        stop: req.body.stop,
-        result: req.body.result,
-        kasutaja: req.user.email, // Add logged-in user email
-      })
-      .then(() => res.status(200).json('Ok'));
+    // Execute SQL query
+
+    await connectToPool();
+    const request = pool.request();
+    request.input('stop', req.body.stop);
+    request.input('result', sql.Int, req.body.result);
+    request.input('rid', sql.Int, req.params.rid);
+    request.input('kasutaja', sql.NVarChar, req.user.pnimi);
+    const query =
+      'UPDATE result SET stop=@stop, result=@result, kasutaja=@kasutaja WHERE rid=@rid';
+    const result = await request.query(query);
+    if (result.rowsAffected[0] > 0) {
+      res.status(200).json({
+        status: true,
+        message: 'Töötaja töö on lõpetatud!',
+      });
+    } else {
+      console.log(result.rowsAffected, 'Muudetud read');
+      throw new Error('Kasutaja andmed ei muudetud!');
+    }
   } catch (error) {
     next(error);
   }
@@ -312,92 +471,110 @@ const tooLopp = async (req, res, next) => {
 /* -------------------------------------------------------------------------- */
 /*                          Lisame töötajale uue töö                          */
 /* -------------------------------------------------------------------------- */
-//tid
-//jid
-//start
-const uusToo = async (req, res, next) => {
-  // Define validation rules
-  const validationRules = [
-    check('tid')
-      .notEmpty()
-      .withMessage('tid is required')
-      .isNumeric()
-      .withMessage('tid must be a number'),
-    check('jid')
-      .notEmpty()
-      .withMessage('jid is required')
-      .isNumeric()
-      .withMessage('jid must be a number'),
-    check('start')
-      .notEmpty()
-      .withMessage('Start on tyhi')
-      .custom((value) => {
-        const regex = /^\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}(?::\d{2})?$/;
-        if (!regex.test(value)) {
-          throw new Error('Start peab olema YYYY-MM-DD[T ]HH:MM');
-        }
-        return true;
-      }),
-  ];
-  // Validate the request body
-  await Promise.all(validationRules.map((rule) => rule.run(req)));
-  const errors = validationResult(req);
+/**
+ * @api {post} /api/users/too/:tid Lisa töötajale uus töö
+ *
+ * @apiParam {Number} params.tid Töötaja ID.
+ * @apiParam {Number} body.jid Töö ID.
+ * @apiParam {String} body.start Töö algusaeg formaadis YYYY-MM-DD HH:MM.
 
-  // Check for validation errors
-  if (!errors.isEmpty()) {
-    const errorMessages = errors.array().map((error) => error.msg);
-    return res.status(400).json(errorMessages);
+ * @apiSuccess {Boolean} response.status True if the operation was successful.
+ * @apiSuccess {String} response.message Message indicating the result of the operation.
+ *
+ */
+const uusToo = async (req, res, next) => {
+  if (!req.body.start || !req.body.jid || !req.params.tid) {
+    return next(new Error('Andmed on puudu!'));
   }
+  if (!isValidDate(req.body.start)) {
+    console.log(req.body.start, 'START');
+    return next(new Error('Start peab olema YYYY-MM-DD HH:MM'));
+  }
+
   try {
-    knex('result')
-      .insert({
-        tid: req.params.tid,
-        jid: req.body.jid,
-        start: req.body.start,
-        kasutaja: req.user.email,
-      })
-      .then(() => res.status(200).json('Ok'));
+    // Execute SQL query
+    await connectToPool();
+    const request = pool.request();
+    request.input('tid', sql.Int, req.params.tid);
+    request.input('jid', sql.Int, req.body.jid);
+    request.input('start', sql.NVarChar, req.body.start);
+    request.input('kasutaja', sql.NVarChar, req.user.pnimi);
+    const query =
+      'INSERT INTO result (tid, jid, start, kasutaja) VALUES (@tid, @jid, @start, @kasutaja)';
+    const result = await request.query(query);
+    if (result.rowsAffected[0] > 0) {
+      res.status(200).json({
+        status: true,
+        message: 'Uus töö on lisatud!',
+      });
+    } else {
+      throw new Error('Uut tööd ei lisatud!');
+    }
   } catch (error) {
     next(error);
   }
 };
 
-// ────────────────────────────────────────────────────────────────────────────────
-
 //
 // ──────────────────────────────────────────────────────────────────── I ──────────
 //   :::::: K O I K   K A S U T A J A D : :  :   :    :     :        :          :
 // ──────────────────────────────────────────────────────────────────────────────
-//router.get('/')
-const allUsers = (req, res) =>
-  knex('users')
-    .select(
-      'id',
-      'enimi',
-      'pnimi',
-      'email',
-      'firma',
-      'mob',
-      'roll',
-      'markus',
-      'todate',
-      'pilt'
-    )
-    .then((row) => {
-      res.json(row);
-    });
-// ────────────────────────────────────────────────────────────────────────────────
+/**
+ * @api {get} /api/users Kõik kasutajad
+ *
+ * @apiSuccess {Number} recordset.id ID of the user.
+ * @apiSuccess {String} recordset.enimi User's first name.
+ * @apiSuccess {String} recordset.pnimi User's last name.
+ * @apiSuccess {String} recordset.email User's email address.
+ * @apiSuccess {Number} recordset.firma_id ID of the user's company.
+ * @apiSuccess {Number} recordset.asukoht_id ID of the user's location.
+ * @apiSuccess {String} recordset.mob User's mobile phone number.
+ * @apiSuccess {String} recordset.roll User's role.
+ * @apiSuccess {String} recordset.markus User's description.
+ * @apiSuccess {Date} recordset.todate User's date of employment.
+ * @apiSuccess {String} recordset.pilt User's picture file name.
+ *
+ */
+const allUsers = async (req, res, next) => {
+  try {
+    await connectToPool();
+    const request = pool.request();
+    const query =
+      'SELECT id, enimi, pnimi, email, firma_id, asukoht_id, mob, roll, markus, todate, pilt FROM dbo.users';
+    const result = await request.query(query);
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    next(err);
+  }
+};
 
-// ────────────────────────────────────────────────────────────────────────────────
-//
 // ──────────────────────────────────────────────────── I ──────────
 //   :::::: O T S I M E : :  :   :    :     :        :          :
 // ──────────────────────────────────────────────────────────────
-//'/otsi/:otsi/:akt'
 /**
- * @param {Text} otsi - otsi text
- * @param {Text} akt - kas ainult aktiivsed
- * @param {Text} asukoht - description
+ * @api {get} /api/users/otsi/:otsi/:akt Otsi töötajaid
+ *
+ * @apiParam {String} otsi Otsitav tekst.
+ * @apiParam {String} akt Aktiivsuse filter (%).
+ * @apiParam {Number} asukoht Asukoha filter.
+ *
+ * @apiSuccess {Number} recordset.TID Employee's ID.
+ * @apiSuccess {String} recordset.ENIMI Employee's first name.
+ * @apiSuccess {String} recordset.PNIMI Employee's last name.
+ * @apiSuccess {String} recordset.IKOOD Employee's personal code.
+ * @apiSuccess {Number} recordset.AJAGUPP Employee's work time group ID.
+ * @apiSuccess {Boolean} recordset.Aktiivne Employee's active status.
+ * @apiSuccess {Number} recordset.toogrupp_id Employee's work group ID.
+ * @apiSuccess {String} recordset.telefon Employee's phone number.
+ * @apiSuccess {String} recordset.toogrupp_nimi Name of the employee's work group.
+ * @apiSuccess {String} recordset.Ajanimi Name of the employee's work time group.
+ * @apiSuccess {String} recordset.pilt Employee's picture file name.
+ * @apiSuccess {String} recordset.email Employee's email address.
+ * @apiSuccess {String} recordset.firma Name of the employee's company.
+ * @apiSuccess {Number} recordset.firma_id ID of the employee's company.
+ * @apiSuccess {String} recordset.asukoht Name of the employee's location.
+ * @apiSuccess {Number} recordset.asukoht_id ID of the employee's location.
+ *
  */
 
 const otsi = async (req, res, next) => {
@@ -409,19 +586,17 @@ const otsi = async (req, res, next) => {
     akt = req.params.akt;
   }
   try {
-    let pool = await sql.connect(sqlConfig);
-    let data = await pool
-      .request()
-      .input('akt', sql.NVarChar, akt)
-      .input('asukoht', sql.Int, req.params.asukoht)
-      .input('otsiText', sql.NVarChar, `%${req.params.otsi}%`)
-      .query(
-        'select * from w_rk_tootjad_lyh with (noexpand) where aktiivne = @akt and asukoht_id = @asukoht and (enimi like @otsiText or pnimi like @otsiText) '
-      );
-    res.json(data.recordset);
+    const pool = await sql.connect(sqlConfig);
+    const request = pool.request();
+    request.input('akt', sql.NVarChar, akt);
+    request.input('asukoht', sql.Int, req.params.asukoht);
+    request.input('otsiText', sql.NVarChar, `%${req.params.otsi}%`);
+    const query =
+      'SELECT dbo.TOOTAJAD.ENIMI, dbo.TOOTAJAD.PNIMI, dbo.TOOTAJAD.TID, dbo.TOOTAJAD.IKOOD, dbo.TOOTAJAD.AJAGUPP, dbo.TOOTAJAD.Aktiivne, dbo.TOOTAJAD.toogrupp_id, dbo.TOOTAJAD.telefon, dbo.toogrupp.toogrupp_nimi, dbo.AJAD.Nimi AS Ajanimi, dbo.TOOTAJAD.pilt, dbo.TOOTAJAD.email, dbo.firmagrupp.nimi AS firma, dbo.firmagrupp.fgid AS firma_id, dbo.asukoht.nimi AS asukoht, dbo.asukoht.id AS asukoht_id FROM dbo.TOOTAJAD INNER JOIN dbo.toogrupp ON dbo.TOOTAJAD.toogrupp_id = dbo.toogrupp.toogrupp_id INNER JOIN dbo.AJAD ON dbo.TOOTAJAD.AJAGUPP = dbo.AJAD.AID INNER JOIN dbo.firmagrupp ON dbo.TOOTAJAD.firma_id = dbo.firmagrupp.fgid INNER JOIN dbo.asukoht ON dbo.TOOTAJAD.asukoht_id = dbo.asukoht.id WHERE aktiivne = @akt and asukoht_id = @asukoht and (enimi like @otsiText or pnimi like @otsiText)';
+    const result = await request.query(query);
+    res.status(200).json(result.recordset);
   } catch (err) {
-    return next(new Error(err));
-    //next(err);
+    next(err);
   }
 };
 // ────────────────────────────────────────────────────────────────────────────────
@@ -482,83 +657,74 @@ const delPilt = async (req, res, next) => {
   };
   return delDbPilt();
 };
-// ────────────────────────────────────────────────────────────────────────────────
-//
-// ──────────────────────────────────────────────────────────────── I ──────────
-//   :::::: L I S A M E   P I L D I : :  :   :    :     :        :          :
-// ──────────────────────────────────────────────────────────────────────────
-//
+/* -------------------------------------------------------------------------- */
+/*                            Lisame muudame pilti                            */
+/* -------------------------------------------------------------------------- */
 const lisaPilt = async (req, res, next) => {
   if (!req.params.id) {
     return next(new Error('Kasutaja ID puudub!'));
   }
+  try {
+    // 2) Otsime ID järgi pildi DB-st
+    const vanaPilt = await otsiDbPildiName(req.params.id);
 
-  // 1) Laeme pildi üles serverisse
-  const piltUpload = () =>
-    new Promise((resolve, reject) => {
-      upload(req, res, (err) => {
-        if (err) {
-          console.log(err, 'Upload error');
-          reject(err);
-        }
-        resolve(true);
-      });
-    });
-
-  // Otsime ID järgi kas on DB-s pilti
-  const otsiDbPildiName = async (id) =>
-    knex('tootajad')
-      .select('pilt')
-      .where('tid', id)
-      .then((rows) => {
-        if (rows.length > 0) {
-          return rows[0].pilt;
-        }
-        return null;
-      });
-
-  // Muudame andmebaasis faili nime
-  const muudaDbFileName = async (id, pilt) => {
-    await knex('tootajad').where('tid', id).update('pilt', pilt);
-  };
-
-  const muudaPilt = async () => {
-    let mess;
-    try {
-      const pathTemp = `${pildiPath}${'Temp.jpeg'}`;
-      // Laeme pildi serverisse
-      await piltUpload();
-      // Otsime ID järgi pildi DB-st
-      const vanaPilt = await otsiDbPildiName(req.params.id);
-      if (vanaPilt) {
-        // Kui on vana pilt serveris siis kustutame
-        await fs.remove(`${pildiPath}${vanaPilt}`);
-        // await delFile(`${pildiPath}${vanaPilt}`);
-      }
-      if (req.file) {
-        // muudame pildi suurust ja salvestama temp nimega
-        await resizePilt(`${pildiPath}${req.file.filename}`, pathTemp);
-        // muudame ds-s faili nime
-        await muudaDbFileName(req.params.id, req.file.filename);
-        // kopeerime originaali muudetud temp faliga üle
-        await fs.copy(pathTemp, `${pildiPath}${req.file.filename}`);
-        // await copyFile(pathTemp, `${pildiPath}${req.file.filename}`);
-        if (vanaPilt) {
-          mess = req.file.filename;
-        } else {
-          mess = req.file.filename;
-        }
-      } else {
-        // kui faili ei ole, siis kustutame DB-s nime
-        await muudaDbFileName(req.params.id, null);
-        mess = 'Pilt on kustutatud!';
-      }
-      return res.status(200).send(mess);
-    } catch (error) {
-      return next(error);
+    // 3) Kustutame vana pildi, kui see on olemas
+    if (vanaPilt) {
+      await fs.remove(`${pildiPath}${vanaPilt}`);
     }
-  };
-  return muudaPilt();
+
+    // 4) Kui uus pilt on üles laetud, siis muudame selle suurust ja salvestame
+    if (req.file) {
+      const pathTemp = `${pildiPath}${'Temp.jpeg'}`;
+      //muudame pildi suurust
+      await resizePilt(`${pildiPath}${req.file.filename}`, pathTemp);
+      //muudame/lisame faili nime andmebaasis
+      await muudaDbFileName(req.params.id, req.file.filename);
+      //kustutame suure faili ära jne
+      await fs.copy(pathTemp, `${pildiPath}${req.file.filename}`);
+      return res.status(200).send(req.file.filename);
+    } else {
+      // 5) Kui faili ei ole, siis kustutame DB-s nime
+      await muudaDbFileName(req.params.id, null);
+      return res.status(200).send('Pilt on kustutatud!');
+    }
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// Helper functions
+const otsiDbPildiName = async (id) => {
+  try {
+    await connectToPool();
+    const request = pool.request();
+    request.input('id', sql.Int, id);
+    const result = await request.query(
+      'SELECT pilt FROM dbo.tootajad WHERE tid=@id'
+    );
+    if (result.recordset.length > 0) {
+      return result.recordset[0].pilt;
+    } else return null;
+  } catch (err) {
+    throw err;
+  }
+};
+
+const muudaDbFileName = async (id, pilt) => {
+  try {
+    await connectToPool();
+    const request = pool.request();
+    request.input('pilt', sql.NVarChar, pilt);
+    request.input('id', sql.Int, id);
+    const result = await request.query(
+      'UPDATE dbo.tootajad SET pilt=@pilt WHERE tid=@id'
+    );
+    if (!(result.rowsAffected > 0)) {
+      throw new Error('Andmebaasi pilti ei muudetud!');
+    }
+  } catch (err) {
+    throw err;
+  }
 };
 //
 // ──────────────────────────────────────────────────────────────────────────────────── I ──────────

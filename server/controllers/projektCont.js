@@ -1,15 +1,15 @@
 /**
-*Module dependencies
-*/
+ *Module dependencies
+ */
 const fs = require('fs-extra');
 
-const knex = require('../config/db');
+const knex = require('../config/knex');
 
 /**
-*Module Variables
-*/
+ *Module Variables
+ */
 
-const projektiPath = ('lepingdata/');
+const projektiPath = 'lepingdata/';
 //
 // ──────────────────────────────────────────────────────────────────────────── I ──────────
 //   :::::: T E E M E   U U E   P R O J E K T I : :  :   :    :     :        :          :
@@ -26,8 +26,7 @@ const newProjekt = async (req, res, next) => {
 
   // const uusProjekt = async () => {
   try {
-    await knex('projekt')
-      .insert(objekt);
+    await knex('projekt').insert(objekt);
     await fs.ensureDir(`${projektiPath}${objekt.leping}`);
     return res.json({
       status: true,
@@ -49,19 +48,18 @@ const delProjekt = async (req, res, next) => {
   if (!req.params.id) {
     return next(new Error('Projekti ID puududb!'));
   }
-  const lepinguNr = async () => knex('projekt')
-    .select('leping')
-    .where('id', req.params.id)
-    .then((rows) => {
-      if (rows.length > 0) {
-        return rows[0].leping;
-      }
-      return next(new Error('Sellise ID-ga lepingut ei leidnud'));
-    });
-  const delDbProjekt = async () => {
-    await knex('projekt')
+  const lepinguNr = async () =>
+    knex('projekt')
+      .select('leping')
       .where('id', req.params.id)
-      .del();
+      .then((rows) => {
+        if (rows.length > 0) {
+          return rows[0].leping;
+        }
+        return next(new Error('Sellise ID-ga lepingut ei leidnud'));
+      });
+  const delDbProjekt = async () => {
+    await knex('projekt').where('id', req.params.id).del();
   };
   const kustutaLeping = async () => {
     try {
@@ -92,9 +90,10 @@ const editProjekt = async (req, res, next) => {
   if (!req.params.id) {
     return next(new Error('Projekti ID on puudu!'));
   }
-  const vanaLepNr = async id => knex('projekt')
-    .where('id', id)
-    .then(row => row[0].leping);
+  const vanaLepNr = async (id) =>
+    knex('projekt')
+      .where('id', id)
+      .then((row) => row[0].leping);
   const updateList = {};
   // Tekitame update listi
   Object.keys(req.body).forEach((key) => {
@@ -103,7 +102,10 @@ const editProjekt = async (req, res, next) => {
   if (updateList.leping) {
     try {
       const vanaLep = await vanaLepNr(req.params.id);
-      await fs.move(`${projektiPath}${vanaLep}`, `${projektiPath}${updateList.leping}`);
+      await fs.move(
+        `${projektiPath}${vanaLep}`,
+        `${projektiPath}${updateList.leping}`
+      );
     } catch (error) {
       return next(error);
     }
@@ -117,7 +119,7 @@ const editProjekt = async (req, res, next) => {
         message: 'Projekt on muudetud!',
       });
     })
-    .catch(err => next(err));
+    .catch((err) => next(err));
 };
 // ────────────────────────────────────────────────────────────────────────────────
 
@@ -128,7 +130,8 @@ const editProjekt = async (req, res, next) => {
 //
 const listProjekt = (req, res, next) => {
   knex('projekt')
-    .select('projekt.nimi',
+    .select(
+      'projekt.nimi',
       'projekt.leping',
       'projekt.riik',
       'projekt.desc',
@@ -136,7 +139,8 @@ const listProjekt = (req, res, next) => {
       'users.pnimi',
       'users.email',
       'users.mob',
-      'users.pilt')
+      'users.pilt'
+    )
     .innerJoin('users', 'projekt.juht', 'users.id')
     .orderBy('projekt.nimi')
     .then((rows) => {
@@ -145,7 +149,7 @@ const listProjekt = (req, res, next) => {
         data: rows,
       });
     })
-    .catch(err => next(err));
+    .catch((err) => next(err));
 };
 // ────────────────────────────────────────────────────────────────────────────────
 //
@@ -169,7 +173,8 @@ const findProjekt = (req, res, next) => {
   }
   const otsing = req.params.otsitext;
   knex('projekt')
-    .select('projekt.nimi',
+    .select(
+      'projekt.nimi',
       'projekt.leping',
       'projekt.riik',
       'projekt.desc',
@@ -177,7 +182,8 @@ const findProjekt = (req, res, next) => {
       'users.pnimi',
       'users.email',
       'users.mob',
-      'users.pilt')
+      'users.pilt'
+    )
     .innerJoin('users', 'projekt.juht', 'users.id')
     .where('projekt.leping', 'like', `%${otsing}%`)
     .orWhere('projekt.nimi', 'like', `%${otsing}%`)
@@ -190,12 +196,12 @@ const findProjekt = (req, res, next) => {
         data: rows,
       });
     })
-    .catch(err => next(err));
+    .catch((err) => next(err));
 };
 
 /**
-*Export Module
-*/
+ *Export Module
+ */
 module.exports = {
   newProjekt,
   delProjekt,
