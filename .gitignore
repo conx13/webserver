@@ -1,4 +1,5 @@
 server/node_modules
+server/public
 server/pildid/userPic/**
 server/lepingdata/**
 server/data/**
@@ -9,7 +10,15 @@ server/data/**
 ._*
 .Spotlight-V100
 .Trashes
+id_rsa.pub
+id_rsa
+id_dsa.pub
+id_dsa
+*.pem
+*.key
 ehthumbs.db
 Thumbs.db
 server/package-lock.json
 server/yarn.lock
+server/public/pildid/userPics/Temp.jpeg
+
