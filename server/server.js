@@ -7,7 +7,7 @@ const app = require('./app');
 // Read SSL certificate and key files
 const options = {
   key: fs.readFileSync('server.key'),
-  cert: fs.readFileSync('server.crt'),
+  cert: fs.readFileSync('server.cert'),
 };
 
 // app.use(history());

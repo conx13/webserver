@@ -173,7 +173,7 @@ const muudameKasutajat = async (req, res, next) => {
     request.input('id', sql.Int, req.params.id);
     const result = await request.query(query);
     console.log(result, 'Result:');
-    if (result.rowsAffected > 0) {
+    if (result.rowsAffected[0] > 0) {
       res.status(200).json({
         status: true,
         message: 'Kasutaja andmed on muudetud!',

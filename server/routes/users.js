@@ -27,6 +27,7 @@ const {
   delPilt,
   lisaPilt,
   pildiCorrect,
+  vordleFaile,
   viimatiAktiivne,
   tooAjaGrupp,
   tooLopp,
@@ -160,7 +161,7 @@ router.delete('/delpic/:pilt', (req, res, next) => delPilt(req, res, next));
 //   :::::: L I S A M E   M U U D A M E   P I L T I : :  :   :    :     :        :          :
 // ──────────────────────────────────────────────────────────────────────────────────────────
 //
-router.post('/editpic/:id', uploadPicture(pildiPath), (req, res, next) => {
+router.post('/editpic/:id', (req, res, next) => {
   lisaPilt(req, res, next);
 });
 // ────────────────────────────────────────────────────────────────────────────────
@@ -169,7 +170,7 @@ router.post('/editpic/:id', uploadPicture(pildiPath), (req, res, next) => {
 //   :::::: F I L I D E   L I S T : :  :   :    :     :        :          :
 // ────────────────────────────────────────────────────────────────────────
 //
-router.get('/pildid/prygi', (req, res, next) => pildiCorrect(req, res, next));
+router.get('/pildid/prygi', (req, res, next) => vordleFaile(req, res, next));
 // ────────────────────────────────────────────────────────────────────────────────
 
 /**

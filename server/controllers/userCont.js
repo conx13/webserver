@@ -3,36 +3,20 @@
  *Module dependencies
  */
 const bcrypt = require('bcrypt');
-const multer = require('multer');
 const fs = require('fs-extra');
 const path = require('path');
 const sql = require('mssql');
 
 const abiks = require('../utils/utils');
-const knex = require('../config/knex');
 
 const sqlConfig = require('../config/mssql');
 
-const upload = require('../utils/upload');
+const uploadPicture = require('../utils/upload');
+const compareFiles = require('../utils/comparefiles');
 
 // paneme paika piltide asukoha
 const pildiPath = path.join(__dirname, '../public/pildid/userPics/');
-// sätime paika fili nime ja asukoha
-/* const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, pildiPath);
-  },
-  filename: (req, file, cb) => {
-    const ext = file.originalname.substring(
-      file.originalname.lastIndexOf('.'),
-      file.originalname.length
-    );
-    cb(null, `${Date.now()}${ext}`);
-  },
-});
-// laeme pildi üles, eelnimetatud kausta ja nimega
-const upload = multer({ storage }).single('pilt');
- */
+
 /**
  *Module Variables
  */
@@ -40,7 +24,9 @@ const saltRounds = 10;
 const { resizePilt } = abiks;
 let pool;
 
-// Ühenduspooli loomine
+/* -------------------------------------------------------------------------- */
+/*                            Ühenduspooli loomine                            */
+/* -------------------------------------------------------------------------- */
 async function connectToPool() {
   try {
     if (!pool) {
@@ -224,7 +210,7 @@ const edituser = async (req, res, next) => {
     await connectToPool();
     const result = await request.query(query);
 
-    if (result.rowsAffected > 0) {
+    if (result.rowsAffected[0] > 0) {
       res.status(200).json({
         status: true,
         message: 'Töötaja andmed on muudetud!',
@@ -614,7 +600,7 @@ const delPilt = async (req, res, next) => {
     return next(new Error('Pilt puudub!'));
   }
   const otsiPilt = req.query.pilt;
-
+  /* ---------------------- Kustutame kaustas pildifaili ---------------------- */
   const kustutaFail = async () => {
     try {
       const filePath = `${pildiPath}${otsiPilt}`;
@@ -636,6 +622,7 @@ const delPilt = async (req, res, next) => {
       }
     }
   };
+  /* ----------------- Kustutame kõigepealt andmebaasis faili ----------------- */
   const delDbPilt = async () => {
     try {
       const pool = await sql.connect(sqlConfig);
@@ -674,6 +661,7 @@ const lisaPilt = async (req, res, next) => {
   }
   try {
     //upload(pildiPath);
+    await uploadPicture(req, res, pildiPath);
     // 2) Otsime ID järgi pildi DB-st
     const vanaPilt = await otsiDbPildiName(req.params.id);
 
@@ -681,7 +669,6 @@ const lisaPilt = async (req, res, next) => {
     if (vanaPilt) {
       await fs.remove(`${pildiPath}${vanaPilt}`);
     }
-    console.log(req.file, 'FILE');
     // 4) Kui uus pilt on üles laetud, siis muudame selle suurust ja salvestame
     if (req.file) {
       const pathTemp = `${pildiPath}${'Temp.jpeg'}`;
@@ -698,11 +685,12 @@ const lisaPilt = async (req, res, next) => {
       return res.status(200).send('Pilt on kustutatud!');
     }
   } catch (error) {
-    return next(error);
+    return next(error, 'Lisapilt Error');
   }
 };
 
 // Helper functions
+//Otsime andmebaasist pildi nime
 const otsiDbPildiName = async (id) => {
   try {
     await connectToPool();
@@ -718,7 +706,7 @@ const otsiDbPildiName = async (id) => {
     throw err;
   }
 };
-
+//muudame andmebaasis pilde nime
 const muudaDbFileName = async (id, pilt) => {
   try {
     await connectToPool();
@@ -735,62 +723,24 @@ const muudaDbFileName = async (id, pilt) => {
     throw err;
   }
 };
-//
-// ──────────────────────────────────────────────────────────────────────────────────── I ──────────
-//   :::::: K U S T U T A M E   D B - S   M I T T E   L E I D U V A D   F A I L I D : :  :         :
-// ─────────────────────────────────────────────────────────────────────────────────────────────────
-//
-const pildiCorrect = async (req, res, next) => {
-  const nimekiriDb = [];
-  const nimekiri = [];
-  let teade;
 
-  // Tekitame db-s olevatest piltidest nimekirja
-  const listDb = async () => {
-    await knex('users')
-      .select('pilt')
-      .orderBy('pilt')
-      .then((rows) => {
-        rows.forEach((element) => {
-          if (element.pilt) {
-            nimekiriDb.push(element.pilt);
-          }
-        });
-      });
-  };
-  const correctDbList = async () => {
-    try {
-      // tekitame dir failidest nimekirja
-      const nimekiriFiles = await fs.readdir(pildiPath);
-      console.log(nimekiriFiles, 'Failid mis on kaustas');
-      // tekitabe andmebaasi nimekirja
-      await listDb();
-      console.log(nimekiriDb, 'Failid mis on andmebaasis');
-      nimekiriFiles.sort();
-      // Käime nimekirjad läbi ja kustutame ülearused failid
-      nimekiriFiles.forEach((x) => {
-        if (nimekiriDb.indexOf(x) === -1) {
-          // tekitame nimekirja failidest mida pole db-s
-          nimekiri.push(x);
-          // kustutame failid mida pole db-s
-          fs.remove(`${pildiPath}${x}`);
-        }
-      });
-      if (nimekiri.length > 0) {
-        teade = 'Sellised failid puudusid andmebaasis ja kustutasime!';
-      } else {
-        teade = 'Kõik paistab ok olema!';
-      }
-      return res.status(200).send({
-        status: true,
-        message: teade,
-        data: nimekiri,
-      });
-    } catch (error) {
+/* -------------------------------------------------------------------------- */
+/*                  Võrdlema baasis ja kaustas olevaid pilte                  */
+/* -------------------------------------------------------------------------- */
+const vordleFaile = async (req, res, next) => {
+  compareFiles(pildiPath)
+    .then((results) => {
+      return res
+        .status(200)
+        .send({ Puuduvad: results.missingFiles, Leiduvad: results.extraFiles });
+      // Now you can use the results to take action, such as:
+      // - Delete extra files
+      // - Update the database with missing files
+    })
+    .catch((error) => {
+      console.error('Error comparing files:', error);
       return next(error);
-    }
-  };
-  return correctDbList();
+    });
 };
 
 /**
@@ -808,7 +758,7 @@ module.exports = {
   otsi, //mssql
   delPilt,
   lisaPilt,
-  pildiCorrect,
+  vordleFaile,
   viimatiAktiivne,
   tooAjaGrupp,
   tooLopp,
