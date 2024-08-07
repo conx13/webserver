@@ -13,10 +13,12 @@ const knex = require('../config/knex');
 
 const sqlConfig = require('../config/mssql');
 
+const upload = require('../utils/upload');
+
 // paneme paika piltide asukoha
 const pildiPath = path.join(__dirname, '../public/pildid/userPics/');
 // sätime paika fili nime ja asukoha
-const storage = multer.diskStorage({
+/* const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, pildiPath);
   },
@@ -30,7 +32,7 @@ const storage = multer.diskStorage({
 });
 // laeme pildi üles, eelnimetatud kausta ja nimega
 const upload = multer({ storage }).single('pilt');
-
+ */
 /**
  *Module Variables
  */
@@ -406,11 +408,11 @@ const tooAjaGrupp = async (req, res, next) => {
    * @apiSuccess {String} recordset.Llopp End time of the lunch break.
    */
   try {
+    const request = pool.request();
     request.input('tid', sql.Int, req.params.tid);
     const query =
       'SELECT TOP 1 Tooalgus, Toolopp, Lalgus, Llopp FROM AJAD INNER JOIN tootajad ON ajad.aid = tootajad.ajagupp WHERE tootajad.tid=@tid';
     await connectToPool();
-    const request = pool.request();
     const result = await request.query(query);
     res.status(200).json(result.recordset[0]);
   } catch (error) {
@@ -615,44 +617,49 @@ const delPilt = async (req, res, next) => {
 
   const kustutaFail = async () => {
     try {
-      await fs.remove(`${pildiPath}${otsiPilt}`);
-      // await delFile(`${pildiPath}${otsiPilt}`);
-      return res.status(200).send({
-        status: true,
-        message: 'Pilt on kustutatud!',
-      });
+      const filePath = `${pildiPath}${otsiPilt}`;
+      if (fs.existsSync(filePath)) {
+        await fs.remove(filePath);
+        return res.status(200).send({
+          status: true,
+          message: 'Pilt on kustutatud!',
+        });
+      } else {
+        return next(new Error('Pilt ei leitud!'));
+      }
     } catch (error) {
-      console.error('DEL ERROR');
-      return next(error);
+      if (error.code === 'ENOENT') {
+        return next(new Error('Pilt ei leitud!'));
+      } else {
+        console.error('Error deleting file:', error);
+        return next(new Error('Viga pildi kustutamisel!'));
+      }
     }
   };
-
   const delDbPilt = async () => {
     try {
       const pool = await sql.connect(sqlConfig);
       const request = pool.request();
       request.input('pilt', sql.NVarChar, otsiPilt);
-      request.query(
-        'UPDATE dbo.tootajad SET pilt=null WHERE pilt=@pilt',
-        (err, result) => {
-          if (err) {
-            console.error(err.message, 'sqli viga');
-            return next(err.message);
-          } else {
-            if (result.rowsAffected > 0) {
-              // if (result.rowsAffected) {
-              //Kui andmebaasit leidsime faili ja
-              //kustatsime siis kustuatme ka päris faili
-              kustutaFail();
-            } else {
-              return next('Pilti ei kustatud.');
-            }
-          }
-        }
+      const result = await request.query(
+        'UPDATE dbo.tootajad SET pilt=null WHERE pilt=@pilt'
       );
-    } catch (err) {
-      console.error(err.message, 'msql ühnenduses viga');
-      return next(err.message);
+      if (result.rowsAffected[0] > 0) {
+        await kustutaFail(); // Move file deletion outside the callback
+        return res.status(200).send({
+          status: true,
+          message: 'Pilt on kustutatud!',
+        });
+      } else {
+        return next(new Error('Pilti ei kustatud.'));
+      }
+    } catch (error) {
+      if (error.code === 'EHOSTUNREACH') {
+        return next(new Error('Andmebaasiga ühendus puudub!'));
+      } else {
+        console.error('Error deleting picture:', error);
+        return next(new Error('Viga pildi kustutamisel!'));
+      }
     }
   };
   return delDbPilt();
@@ -661,10 +668,12 @@ const delPilt = async (req, res, next) => {
 /*                            Lisame muudame pilti                            */
 /* -------------------------------------------------------------------------- */
 const lisaPilt = async (req, res, next) => {
+  console.log('LISAPILT');
   if (!req.params.id) {
     return next(new Error('Kasutaja ID puudub!'));
   }
   try {
+    //upload(pildiPath);
     // 2) Otsime ID järgi pildi DB-st
     const vanaPilt = await otsiDbPildiName(req.params.id);
 
@@ -672,7 +681,7 @@ const lisaPilt = async (req, res, next) => {
     if (vanaPilt) {
       await fs.remove(`${pildiPath}${vanaPilt}`);
     }
-
+    console.log(req.file, 'FILE');
     // 4) Kui uus pilt on üles laetud, siis muudame selle suurust ja salvestame
     if (req.file) {
       const pathTemp = `${pildiPath}${'Temp.jpeg'}`;
@@ -719,7 +728,7 @@ const muudaDbFileName = async (id, pilt) => {
     const result = await request.query(
       'UPDATE dbo.tootajad SET pilt=@pilt WHERE tid=@id'
     );
-    if (!(result.rowsAffected > 0)) {
+    if (!(result.rowsAffected[0] > 0)) {
       throw new Error('Andmebaasi pilti ei muudetud!');
     }
   } catch (err) {

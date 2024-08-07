@@ -317,8 +317,8 @@ const delPilt = async (req, res, next) => {
   if (!req.query.pilt) {
     return next(new Error('Pilt puudub!'));
   }
-  // const otsiPilt = req.query.pilt;
-  const otsiPilt = '1';
+  const otsiPilt = req.query.pilt;
+  //const otsiPilt = '1';
 
   //Kustutame faili kataloogist
   const delFile = async () => {
@@ -343,7 +343,7 @@ const delPilt = async (req, res, next) => {
       const result = await request.query(
         'UPDATE dbo.users SET pilt=null WHERE pilt=@pilt'
       );
-      if (result.rowsAffected > 0) {
+      if (result.rowsAffected[0] > 0) {
         // if (result.rowsAffected) {
         //Kui andmebaasit leidsime faili ja
         //kustutasime siis kustutame ka päris faili

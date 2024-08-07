@@ -1,6 +1,6 @@
 /**
-*Module dependencies
-*/
+ *Module dependencies
+ */
 const sharp = require('sharp');
 
 // ────────────────────────────────────────────────────────────────────────────────
@@ -16,12 +16,14 @@ const isLoggedIn = (req, res, next) => {
     if (req.user.todate) {
       const aktkpv = new Date(req.user.todate);
       aktkpv.setHours(23); // Lisame tunnid, et kell ei oleks väiksem praegusest
-      const tanakpv = Date.now();// Tänane kpv
-      if (aktkpv < tanakpv) { //Kui on väiksem kui täna
-        res.clearCookie("webProjekt.sess");
+      const tanakpv = Date.now(); // Tänane kpv
+      if (aktkpv < tanakpv) {
+        //Kui on väiksem kui täna
+        res.clearCookie('webProjekt.sess');
         return res.status(401).send({
           status: false,
-          message: 'Konto ei ole enam aktiivne!\n Võta ühendust projektijuhiga!\n',
+          message:
+            'Konto ei ole enam aktiivne!\n Võta ühendust projektijuhiga!\n',
         });
       }
     }
@@ -42,17 +44,21 @@ const isLoggedIn = (req, res, next) => {
 const resizePilt = async (origPilt, resizedPilt) => {
   await sharp(origPilt)
     .rotate()
-    .resize(500)
+    .jpeg({ mozjpeg: true })
+    //.resize(300)
+    .resize(200, 200, {
+      fit: 'cover',
+    })
     .toFile(resizedPilt)
     .catch((err) => {
       console.log(err, 'resizeError');
-      throw (err);
+      throw err;
     });
 };
 
 /**
-*Export Module
-*/
+ *Export Module
+ */
 module.exports = {
   isLoggedIn,
   resizePilt,

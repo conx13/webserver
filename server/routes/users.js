@@ -9,7 +9,7 @@ const router = require('express').Router();
 const path = require('path');
 const usersCont = require('../controllers/userCont');
 const abiks = require('../utils/utils');
-const upload = require('../utils/upload');
+const uploadPicture = require('../utils/upload');
 
 const pildiPath = path.join(__dirname, '../public/pildid/userPics/');
 
@@ -160,9 +160,9 @@ router.delete('/delpic/:pilt', (req, res, next) => delPilt(req, res, next));
 //   :::::: L I S A M E   M U U D A M E   P I L T I : :  :   :    :     :        :          :
 // ──────────────────────────────────────────────────────────────────────────────────────────
 //
-router.post('/editpic/:id', upload(pildiPath), (req, res, next) =>
-  lisaPilt(req, res, next)
-);
+router.post('/editpic/:id', uploadPicture(pildiPath), (req, res, next) => {
+  lisaPilt(req, res, next);
+});
 // ────────────────────────────────────────────────────────────────────────────────
 //
 // ────────────────────────────────────────────────────────────── I ──────────

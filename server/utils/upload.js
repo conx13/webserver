@@ -1,7 +1,7 @@
 const multer = require('multer');
 
 // laeme pildi üles, eelnimetatud kausta ja nimega
-const upload = (pildiPath) => {
+const uploadPicture = (pildiPath) => {
   // sätime paika fili nime ja asukoha
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -18,4 +18,4 @@ const upload = (pildiPath) => {
   return multer({ storage }).single('pilt');
 };
 
-module.exports = upload;
+module.exports = uploadPicture;
