@@ -1,5 +1,5 @@
 server/node_modules
-server/public/pildid/**
+server/public
 server/lepingdata/**
 server/data/**
 # OS generated files #
